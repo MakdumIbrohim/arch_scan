@@ -150,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
         pdfPath: outPath,
       );
       await DocumentStorageService.instance.saveDocument(mergedDoc);
+      if (!mounted) return;
       setState(() => _selectedDocIds.clear());
       _refresh();
 
@@ -171,7 +172,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (pdfFiles.isNotEmpty) {
-      await Share.shareXFiles(pdfFiles, text: 'Documents exported via ArchScan');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: pdfFiles,
+          text: 'Documents exported via ArchScan',
+        ),
+      );
     }
   }
 
@@ -733,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.document_scanner_outlined, size: 48, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.document_scanner_outlined, size: 48, color: ArchTheme.textSecondary.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
             const Text(
               'Belum ada dokumen',
@@ -935,7 +941,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ArchTheme.teal.withOpacity(0.15),
+                    color: ArchTheme.teal.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(

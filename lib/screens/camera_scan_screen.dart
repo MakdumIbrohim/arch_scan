@@ -233,7 +233,7 @@ class _MinimalViewfinderPainter extends CustomPainter {
 
     // Subtle 1px boundary box
     final boxPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
     canvas.drawRect(Rect.fromLTWH(0, 0, w, h), boxPaint);

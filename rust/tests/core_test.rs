@@ -2,9 +2,8 @@ use arch_scan_core::bridge::*;
 use arch_scan_core::detection::detect_document_corners;
 use arch_scan_core::enhancement::{apply_filter, FilterType};
 use arch_scan_core::pdf::create_pdf_from_images;
-use arch_scan_core::perspective::{warp_perspective, Point};
+use arch_scan_core::perspective::warp_perspective;
 use image::{DynamicImage, ImageBuffer, Rgba};
-use std::ffi::CString;
 
 #[test]
 fn test_core_version() {

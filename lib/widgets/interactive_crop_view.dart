@@ -170,7 +170,7 @@ class _CropOverlayPainter extends CustomPainter {
     final pts = corners.map((c) => Offset(c.x * size.width, c.y * size.height)).toList();
 
     // 1. Clean darkened overlay outside crop box
-    final bgPaint = Paint()..color = Colors.black.withOpacity(0.6);
+    final bgPaint = Paint()..color = Colors.black.withValues(alpha: 0.6);
     final fullRect = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final quadPath = Path()
@@ -207,7 +207,7 @@ class _CropOverlayPainter extends CustomPainter {
     }
 
     // 4. Draw 4 edge midpoint handles (pill / small rectangle)
-    final edgePaint = Paint()..color = Colors.white.withOpacity(0.9);
+    final edgePaint = Paint()..color = Colors.white.withValues(alpha: 0.9);
     for (int i = 0; i < 4; i++) {
       final mid = Offset(
         (pts[i].dx + pts[(i + 1) % 4].dx) * 0.5,

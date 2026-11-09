@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/bridge/arch_scan_bridge.dart';
 import '../core/theme/arch_theme.dart';
@@ -23,7 +22,6 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   ScanDocument? _document;
   bool _isLoading = true;
   bool _isGeneratingPdf = false;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -40,20 +38,6 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _addPage(ImageSource source) async {
-    final picked = await _picker.pickImage(source: source);
-    if (picked == null || !mounted || _document == null) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CropScreen(
-          imagePath: picked.path,
-          documentId: _document!.id,
-        ),
-      ),
-    );
   }
 
   Future<void> _deletePage(int index) async {
@@ -157,7 +141,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     child: ChoiceChip(
                       label: Text(p.name.toUpperCase()),
                       selected: isSel,
-                      selectedColor: ArchTheme.primary.withOpacity(0.2),
+                      selectedColor: ArchTheme.primary.withValues(alpha: 0.2),
                       side: BorderSide(
                         color: isSel ? ArchTheme.primary : ArchTheme.border,
                       ),
@@ -181,7 +165,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     child: ChoiceChip(
                       label: Text(q.name.toUpperCase()),
                       selected: isSel,
-                      selectedColor: ArchTheme.accent.withOpacity(0.2),
+                      selectedColor: ArchTheme.accent.withValues(alpha: 0.2),
                       side: BorderSide(
                         color: isSel ? ArchTheme.accent : ArchTheme.border,
                       ),
@@ -284,9 +268,11 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     }
 
     if (pdfPath != null && mounted) {
-      await Share.shareXFiles(
-        [XFile(pdfPath)],
-        text: 'Document: ${_document!.title} (Scanned with ArchScan)',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(pdfPath)],
+          text: 'Document: ${_document!.title} (Scanned with ArchScan)',
+        ),
       );
     }
   }
@@ -297,9 +283,11 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     final imgPath = await DocumentStorageService.instance
         .stitchDocumentToLongImage(_document!);
     if (imgPath != null && mounted) {
-      await Share.shareXFiles(
-        [XFile(imgPath)],
-        text: '${_document!.title} (Stitched Long Image)',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(imgPath)],
+          text: '${_document!.title} (Stitched Long Image)',
+        ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -423,9 +411,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       body: ReorderableListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _document!.pages.length,
-        onReorder: (oldIndex, newIndex) async {
+        onReorderItem: (oldIndex, newIndex) async {
           setState(() {
-            if (newIndex > oldIndex) newIndex--;
             final page = _document!.pages.removeAt(oldIndex);
             _document!.pages.insert(newIndex, page);
             _document!.updatedAt = DateTime.now();

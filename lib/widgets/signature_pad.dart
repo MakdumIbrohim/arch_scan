@@ -99,8 +99,10 @@ class _SignaturePadModalState extends State<SignaturePadModal> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 final img = await _captureSignature();
-                if (mounted) Navigator.pop(context, img);
+                if (!mounted) return;
+                navigator.pop(img);
               },
               child: const Text('Save Signature'),
             ),

@@ -125,4 +125,20 @@ class DocumentStorageService {
     }
     return null;
   }
+
+  Future<String?> stitchDocumentToLongImage(ScanDocument doc) async {
+    if (doc.pages.isEmpty) return null;
+    final dir = await appDirectory;
+    final imgDir = Directory('${dir.path}/stitched');
+    if (!await imgDir.exists()) await imgDir.create(recursive: true);
+
+    final outPath = '${imgDir.path}/${doc.id}_long.jpg';
+    final imagePaths = doc.pages.map((p) => p.processedImagePath).toList();
+
+    final success = ArchScanBridge.instance.stitchLongImage(
+      imagePaths: imagePaths,
+      outputPath: outPath,
+    );
+    return success ? outPath : null;
+  }
 }

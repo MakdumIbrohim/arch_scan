@@ -244,3 +244,41 @@ pub fn stitch_id_card(front: &DynamicImage, back: &DynamicImage) -> DynamicImage
 
     DynamicImage::ImageRgba8(canvas)
 }
+
+/// Stitch arbitrary number of page images vertically into one continuous long image (CamScanner Long Picture Stitch)
+pub fn stitch_long_image(images: &[DynamicImage]) -> Result<DynamicImage, String> {
+    if images.is_empty() {
+        return Err("No images to stitch".to_string());
+    }
+
+    let target_w = 1080u32;
+    let mut total_h = 0u32;
+    let gap = 16u32;
+
+    let mut resized_images = Vec::new();
+    for img in images {
+        let aspect = img.width() as f32 / img.height() as f32;
+        let h = (target_w as f32 / aspect).round() as u32;
+        let r = img.resize_exact(target_w, h, image::imageops::FilterType::Lanczos3);
+        total_h += h;
+        resized_images.push(r);
+    }
+
+    if images.len() > 1 {
+        total_h += (images.len() as u32 - 1) * gap;
+    }
+
+    let mut canvas: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_pixel(target_w, total_h, Rgba([245, 245, 245, 255]));
+
+    let mut current_y = 0u32;
+    for (i, img) in resized_images.iter().enumerate() {
+        image::imageops::overlay(&mut canvas, img, 0, current_y as i64);
+        current_y += img.height();
+        if i + 1 < resized_images.len() {
+            current_y += gap;
+        }
+    }
+
+    Ok(DynamicImage::ImageRgba8(canvas))
+}

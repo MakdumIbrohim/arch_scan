@@ -271,3 +271,47 @@ pub extern "C" fn arch_scan_stitch_id_card(
 
     0
 }
+
+/// Stitch an array of image file paths into a single long vertical JPEG image:
+/// `images_json` = `["/path/1.jpg", "/path/2.jpg", ...]`
+#[no_mangle]
+pub extern "C" fn arch_scan_stitch_long_image(
+    images_json: *const c_char,
+    output_path: *const c_char,
+) -> i32 {
+    if images_json.is_null() || output_path.is_null() {
+        return -1;
+    }
+    let json_str = match unsafe { CStr::from_ptr(images_json) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let out_str = match unsafe { CStr::from_ptr(output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let paths: Vec<String> = match serde_json::from_str(json_str) {
+        Ok(p) => p,
+        Err(_) => return -2,
+    };
+
+    let mut images = Vec::new();
+    for p in &paths {
+        match image::open(p) {
+            Ok(img) => images.push(img),
+            Err(_) => return -2,
+        }
+    }
+
+    match crate::enhancement::stitch_long_image(&images) {
+        Ok(res) => {
+            if res.save(out_str).is_err() {
+                -4
+            } else {
+                0
+            }
+        }
+        Err(_) => -3,
+    }
+}

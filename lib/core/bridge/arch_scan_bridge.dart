@@ -30,6 +30,9 @@ typedef StitchIdCardC = Int32 Function(
 typedef StitchIdCardDart = int Function(
     Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
 
+typedef StitchLongImageC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
+typedef StitchLongImageDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
+
 class Point2D {
   final double x;
   final double y;
@@ -62,6 +65,7 @@ class ArchScanBridge {
   late final GenerateSearchablePdfDart _generateSearchablePdfFn;
   late final GenerateConfiguredPdfDart _generateConfiguredPdfFn;
   late final StitchIdCardDart _stitchIdCardFn;
+  late final StitchLongImageDart _stitchLongImageFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -105,6 +109,8 @@ class ArchScanBridge {
           GenerateConfiguredPdfDart>('arch_scan_generate_pdf_configured');
       _stitchIdCardFn = _lib.lookupFunction<StitchIdCardC,
           StitchIdCardDart>('arch_scan_stitch_id_card');
+      _stitchLongImageFn = _lib.lookupFunction<StitchLongImageC,
+          StitchLongImageDart>('arch_scan_stitch_long_image');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -284,6 +290,25 @@ class ArchScanBridge {
     } finally {
       calloc.free(fPtr);
       calloc.free(bPtr);
+      calloc.free(outPtr);
+    }
+  }
+
+  bool stitchLongImage({
+    required List<String> imagePaths,
+    required String outputPath,
+  }) {
+    if (!_initialized) return false;
+
+    final jsonStr = jsonEncode(imagePaths);
+    final inPtr = jsonStr.toNativeUtf8();
+    final outPtr = outputPath.toNativeUtf8();
+
+    try {
+      final res = _stitchLongImageFn(inPtr, outPtr);
+      return res == 0;
+    } finally {
+      calloc.free(inPtr);
       calloc.free(outPtr);
     }
   }

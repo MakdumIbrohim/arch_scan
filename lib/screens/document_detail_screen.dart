@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/bridge/arch_scan_bridge.dart';
@@ -290,6 +291,74 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     }
   }
 
+  Future<void> _exportLongImage() async {
+    if (_document == null || _document!.pages.isEmpty) return;
+
+    final imgPath = await DocumentStorageService.instance
+        .stitchDocumentToLongImage(_document!);
+    if (imgPath != null && mounted) {
+      await Share.shareXFiles(
+        [XFile(imgPath)],
+        text: '${_document!.title} (Stitched Long Image)',
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to stitch long image')),
+      );
+    }
+  }
+
+  void _extractText() {
+    if (_document == null) return;
+    final allText = _document!.pages
+        .expand((p) => p.ocrItems)
+        .map((o) => o.text)
+        .join(' ');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ArchTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('OCR Text Layer',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(
+                        text: allText.isNotEmpty ? allText : _document!.title));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Copied to clipboard')));
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              allText.isNotEmpty
+                  ? allText
+                  : 'Document text layer indexed for Searchable PDF.',
+              style: const TextStyle(
+                  color: ArchTheme.textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -324,8 +393,18 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         ),
         actions: [
           IconButton(
+            onPressed: _extractText,
+            icon: const Icon(Icons.text_fields_outlined, size: 20),
+            tooltip: 'OCR Text Layer',
+          ),
+          IconButton(
+            onPressed: _exportLongImage,
+            icon: const Icon(Icons.view_agenda_outlined, size: 20),
+            tooltip: 'Stitch Long Image',
+          ),
+          IconButton(
             onPressed: _isGeneratingPdf ? null : _shareDocument,
-            icon: const Icon(Icons.share, color: ArchTheme.accent),
+            icon: const Icon(Icons.share, size: 20),
             tooltip: 'Share Document',
           ),
           IconButton(

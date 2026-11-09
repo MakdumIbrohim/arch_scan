@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import '../core/theme/arch_theme.dart';
 
 class SignaturePadModal extends StatefulWidget {
-  const SignaturePadModal({super.key});
+  final ValueChanged<String>? onSignatureSaved;
+
+  const SignaturePadModal({super.key, this.onSignatureSaved});
 
   @override
   State<SignaturePadModal> createState() => _SignaturePadModalState();
@@ -99,10 +103,35 @@ class _SignaturePadModalState extends State<SignaturePadModal> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                final navigator = Navigator.of(context);
+                final nav = Navigator.of(context);
                 final img = await _captureSignature();
+                if (img == null || !mounted) return;
+
+                final byteData =
+                    await img.toByteData(format: ui.ImageByteFormat.png);
+                if (byteData == null || !mounted) return;
+
+                final bytes = byteData.buffer.asUint8List();
+                String savePath;
+                try {
+                  final tmpDir = await getTemporaryDirectory();
+                  final file = File(
+                      '${tmpDir.path}/sig_${DateTime.now().millisecondsSinceEpoch}.png');
+                  await file.writeAsBytes(bytes);
+                  savePath = file.path;
+                } catch (_) {
+                  final file = File(
+                      '.arch_scan_data/sig_${DateTime.now().millisecondsSinceEpoch}.png');
+                  if (!file.parent.existsSync()) {
+                    file.parent.createSync(recursive: true);
+                  }
+                  await file.writeAsBytes(bytes);
+                  savePath = file.path;
+                }
+
                 if (!mounted) return;
-                navigator.pop(img);
+                widget.onSignatureSaved?.call(savePath);
+                nav.pop(savePath);
               },
               child: const Text('Save Signature'),
             ),

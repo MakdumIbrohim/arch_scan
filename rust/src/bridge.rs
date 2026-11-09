@@ -315,3 +315,46 @@ pub extern "C" fn arch_scan_stitch_long_image(
         Err(_) => -3,
     }
 }
+
+/// Composite an overlay image (such as a signature) onto a base image
+#[no_mangle]
+pub extern "C" fn arch_scan_composite_overlay(
+    base_path: *const c_char,
+    overlay_path: *const c_char,
+    output_path: *const c_char,
+    norm_x: f32,
+    norm_y: f32,
+    scale: f32,
+) -> i32 {
+    if base_path.is_null() || overlay_path.is_null() || output_path.is_null() {
+        return -1;
+    }
+    let b_str = match unsafe { CStr::from_ptr(base_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let o_str = match unsafe { CStr::from_ptr(overlay_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let out_str = match unsafe { CStr::from_ptr(output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let base = match image::open(b_str) {
+        Ok(img) => img,
+        Err(_) => return -2,
+    };
+    let overlay = match image::open(o_str) {
+        Ok(img) => img,
+        Err(_) => return -2,
+    };
+
+    let result = crate::enhancement::composite_overlay(&base, &overlay, norm_x, norm_y, scale);
+    if result.save(out_str).is_err() {
+        -3
+    } else {
+        0
+    }
+}

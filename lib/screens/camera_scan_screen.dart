@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/theme/arch_theme.dart';
 import 'crop_screen.dart';
 import 'batch_process_screen.dart';
+import 'id_card_scan_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   final String? documentId;
@@ -143,6 +144,32 @@ class _CameraScanScreenState extends State<CameraScanScreen> {
               ),
             ),
           ),
+          // Mode Selector Bar (Dokumen / Batch / Kartu ID)
+          Positioned(
+            bottom: 115,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildModeChoice('Dokumen', !_isBatchMode, () {
+                  setState(() => _isBatchMode = false);
+                }),
+                const SizedBox(width: 24),
+                _buildModeChoice('Batch', _isBatchMode, () {
+                  setState(() => _isBatchMode = true);
+                }),
+                const SizedBox(width: 24),
+                _buildModeChoice('Kartu ID', false, () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const IdCardScanScreen()),
+                  );
+                }),
+              ],
+            ),
+          ),
           // Bottom Controls
           Positioned(
             bottom: 30,
@@ -220,6 +247,28 @@ class _CameraScanScreenState extends State<CameraScanScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeChoice(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white24 : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white60,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }

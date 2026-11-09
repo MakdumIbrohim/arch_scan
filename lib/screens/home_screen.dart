@@ -14,6 +14,8 @@ import 'crop_screen.dart';
 import 'document_detail_screen.dart';
 import 'id_card_scan_screen.dart';
 import 'batch_process_screen.dart';
+import 'qr_screen.dart';
+import 'ocr_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -409,8 +411,9 @@ class _HomeScreenState extends State<HomeScreen> {
         label: 'Scan QR',
         color: const Color(0xFF06B6D4),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('QR Scanner ready')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const QrScannerScreen()),
           );
         },
       ),
@@ -909,6 +912,12 @@ class _HomeScreenState extends State<HomeScreen> {
         'title': 'Scan QR & Barcode',
         'desc': 'Pindai kode QR atau barcode produk dari kamera'
       },
+      {
+        'icon': Icons.text_snippet_outlined,
+        'color': const Color(0xFF3B82F6),
+        'title': 'Ekstraksi Teks (OCR)',
+        'desc': 'Ekstrak dan salin teks langsung dari foto dokumen pindaian'
+      },
     ];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -988,8 +997,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   );
                 } else if (title == 'Scan QR & Barcode') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Arahkan kamera ke kode QR / Barcode')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                  );
+                } else if (title.contains('Ekstraksi Teks')) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OcrScreen()),
                   );
                 } else {
                   if (_documents.isNotEmpty) {

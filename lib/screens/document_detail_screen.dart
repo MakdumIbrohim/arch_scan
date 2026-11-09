@@ -8,6 +8,8 @@ import '../models/document_model.dart';
 import '../services/document_storage.dart';
 import 'crop_screen.dart';
 import 'camera_scan_screen.dart';
+import 'ocr_screen.dart';
+import '../widgets/signature_pad.dart';
 
 class DocumentDetailScreen extends StatefulWidget {
   final String documentId;
@@ -315,6 +317,58 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     }
   }
 
+  Future<void> _signPage(ScanPage page) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SignaturePadModal(
+        onSignatureSaved: (sigPath) async {
+          final outPath = page.processedImagePath;
+          final success = ArchScanBridge.instance.compositeOverlay(
+            basePath: page.processedImagePath,
+            overlayPath: sigPath,
+            outputPath: outPath,
+            normX: 0.55,
+            normY: 0.70,
+            scale: 0.9,
+          );
+          if (success && mounted) {
+            _document!.updatedAt = DateTime.now();
+            await DocumentStorageService.instance.saveDocument(_document!);
+            if (mounted) {
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tanda tangan berhasil dibubuhkan pada halaman')),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  void _extractPageOcr(ScanPage page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OcrScreen(initialImagePath: page.processedImagePath),
+      ),
+    );
+  }
+
+  Future<void> _exportAllPagesAsImages() async {
+    if (_document == null || _document!.pages.isEmpty) return;
+    final files =
+        _document!.pages.map((p) => XFile(p.processedImagePath)).toList();
+    await SharePlus.instance.share(
+      ShareParams(
+        files: files,
+        text: 'Halaman Dokumen: ${_document!.title}',
+      ),
+    );
+  }
+
   void _extractText() {
     if (_document == null) return;
     final allText = _document!.pages
@@ -425,6 +479,26 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 : const Icon(Icons.picture_as_pdf, color: ArchTheme.primary),
             tooltip: 'Export PDF',
           ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (val) {
+              if (val == 'images') {
+                _exportAllPagesAsImages();
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'images',
+                child: Row(
+                  children: [
+                    Icon(Icons.photo_library_outlined, size: 18),
+                    SizedBox(width: 8),
+                    Text('Bagikan Gambar Tiap Halaman'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: ReorderableListView.builder(
@@ -466,7 +540,17 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.crop, color: ArchTheme.primary),
+                    icon: const Icon(Icons.draw_outlined, size: 19),
+                    tooltip: 'Bubuhkan Tanda Tangan',
+                    onPressed: () => _signPage(page),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.text_snippet_outlined, size: 19),
+                    tooltip: 'Ekstrak Teks OCR',
+                    onPressed: () => _extractPageOcr(page),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.crop, color: ArchTheme.primary, size: 19),
                     tooltip: 'Re-crop',
                     onPressed: () {
                       Navigator.push(

@@ -33,6 +33,11 @@ typedef StitchIdCardDart = int Function(
 typedef StitchLongImageC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef StitchLongImageDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
 
+typedef CompositeOverlayC = Int32 Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Float, Float, Float);
+typedef CompositeOverlayDart = int Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, double, double, double);
+
 class Point2D {
   final double x;
   final double y;
@@ -47,7 +52,8 @@ enum ScanFilter {
   magicColor(1, 'Magic Color'),
   blackAndWhite(2, 'B&W'),
   grayscale(3, 'Grayscale'),
-  sharp(4, 'Sharp');
+  sharp(4, 'Sharp'),
+  whiteboard(5, 'Papan Tulis');
 
   final int id;
   final String label;
@@ -66,6 +72,7 @@ class ArchScanBridge {
   late final GenerateConfiguredPdfDart _generateConfiguredPdfFn;
   late final StitchIdCardDart _stitchIdCardFn;
   late final StitchLongImageDart _stitchLongImageFn;
+  late final CompositeOverlayDart _compositeOverlayFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -114,6 +121,8 @@ class ArchScanBridge {
           StitchIdCardDart>('arch_scan_stitch_id_card');
       _stitchLongImageFn = _lib.lookupFunction<StitchLongImageC,
           StitchLongImageDart>('arch_scan_stitch_long_image');
+      _compositeOverlayFn = _lib.lookupFunction<CompositeOverlayC,
+          CompositeOverlayDart>('arch_scan_composite_overlay');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -312,6 +321,30 @@ class ArchScanBridge {
       return res == 0;
     } finally {
       calloc.free(inPtr);
+      calloc.free(outPtr);
+    }
+  }
+
+  bool compositeOverlay({
+    required String basePath,
+    required String overlayPath,
+    required String outputPath,
+    double normX = 0.55,
+    double normY = 0.75,
+    double scale = 1.0,
+  }) {
+    if (!_initialized) return false;
+    final bPtr = basePath.toNativeUtf8();
+    final oPtr = overlayPath.toNativeUtf8();
+    final outPtr = outputPath.toNativeUtf8();
+
+    try {
+      final res =
+          _compositeOverlayFn(bPtr, oPtr, outPtr, normX, normY, scale);
+      return res == 0;
+    } finally {
+      calloc.free(bPtr);
+      calloc.free(oPtr);
       calloc.free(outPtr);
     }
   }

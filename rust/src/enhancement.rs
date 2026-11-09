@@ -7,6 +7,7 @@ pub enum FilterType {
     BlackAndWhite = 2,
     Grayscale = 3,
     Sharp = 4,
+    Whiteboard = 5,
 }
 
 impl From<i32> for FilterType {
@@ -16,6 +17,7 @@ impl From<i32> for FilterType {
             2 => FilterType::BlackAndWhite,
             3 => FilterType::Grayscale,
             4 => FilterType::Sharp,
+            5 => FilterType::Whiteboard,
             _ => FilterType::Original,
         }
     }
@@ -28,6 +30,7 @@ pub fn apply_filter(img: &DynamicImage, filter: FilterType) -> DynamicImage {
         FilterType::BlackAndWhite => apply_black_and_white(img),
         FilterType::Grayscale => apply_grayscale(img),
         FilterType::Sharp => apply_sharp(img),
+        FilterType::Whiteboard => apply_whiteboard(img),
     }
 }
 
@@ -281,4 +284,63 @@ pub fn stitch_long_image(images: &[DynamicImage]) -> Result<DynamicImage, String
     }
 
     Ok(DynamicImage::ImageRgba8(canvas))
+}
+
+/// Whiteboard filter: High-contrast whitening with vibrant marker preservation
+fn apply_whiteboard(img: &DynamicImage) -> DynamicImage {
+    let (w, h) = img.dimensions();
+    let rgb = img.to_rgb8();
+    let mut out = ImageBuffer::new(w, h);
+
+    for (x, y, p) in rgb.enumerate_pixels() {
+        let r = p[0] as f32;
+        let g = p[1] as f32;
+        let b = p[2] as f32;
+        let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if lum > 155.0 {
+            let t = (lum - 155.0) / 100.0;
+            let factor = 1.0 + t * 0.5;
+            let nr = ((r * factor).min(255.0)) as u8;
+            let ng = ((g * factor).min(255.0)) as u8;
+            let nb = ((b * factor).min(255.0)) as u8;
+            out.put_pixel(x, y, Rgba([nr, ng, nb, 255]));
+        } else {
+            let boost = 1.2;
+            let nr = ((r * boost).clamp(0.0, 255.0)) as u8;
+            let ng = ((g * boost).clamp(0.0, 255.0)) as u8;
+            let nb = ((b * boost).clamp(0.0, 255.0)) as u8;
+            out.put_pixel(x, y, Rgba([nr, ng, nb, 255]));
+        }
+    }
+    DynamicImage::ImageRgba8(out)
+}
+
+/// Composite a transparent overlay (such as a signature or stamp) onto a base image
+pub fn composite_overlay(
+    base: &DynamicImage,
+    overlay: &DynamicImage,
+    norm_x: f32,
+    norm_y: f32,
+    scale: f32,
+) -> DynamicImage {
+    let mut base_rgba = base.to_rgba8();
+    let base_w = base.width() as f32;
+    let base_h = base.height() as f32;
+
+    let target_w = ((base_w * 0.35) * scale.clamp(0.1, 3.0)).round() as u32;
+    let aspect = overlay.height() as f32 / overlay.width().max(1) as f32;
+    let target_h = (target_w as f32 * aspect).round() as u32;
+
+    let overlay_resized = overlay.resize_exact(
+        target_w.max(1),
+        target_h.max(1),
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    let px = (norm_x * base_w).round() as i64;
+    let py = (norm_y * base_h).round() as i64;
+
+    image::imageops::overlay(&mut base_rgba, &overlay_resized, px, py);
+    DynamicImage::ImageRgba8(base_rgba)
 }

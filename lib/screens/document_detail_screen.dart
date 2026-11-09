@@ -100,8 +100,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   Future<void> _exportPdf() async {
     if (_document == null || _document!.pages.isEmpty) return;
 
-    PdfPaperSize selectedPaper = PdfPaperSize.a4;
-    PdfQuality selectedQuality = PdfQuality.high;
+    PdfPaperSize selectedPaper = ThemeService.instance.defaultPaperSize;
+    PdfQuality selectedQuality = ThemeService.instance.defaultQuality;
 
     final config = await showModalBottomSheet<PdfSettings>(
       context: context,

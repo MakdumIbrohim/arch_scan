@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../bridge/arch_scan_bridge.dart';
 
 class ThemeService extends ChangeNotifier {
   static final ThemeService instance = ThemeService._();
@@ -6,9 +7,15 @@ class ThemeService extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.dark;
   Color _accentColor = const Color(0xFF2563EB); // Arch Blue default
+  PdfPaperSize _defaultPaperSize = PdfPaperSize.a4;
+  PdfQuality _defaultQuality = PdfQuality.high;
+  ScanFilter _defaultFilter = ScanFilter.magicColor;
 
   ThemeMode get themeMode => _themeMode;
   Color get accentColor => _accentColor;
+  PdfPaperSize get defaultPaperSize => _defaultPaperSize;
+  PdfQuality get defaultQuality => _defaultQuality;
+  ScanFilter get defaultFilter => _defaultFilter;
 
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
@@ -17,6 +24,21 @@ class ThemeService extends ChangeNotifier {
 
   void setAccentColor(Color color) {
     _accentColor = color;
+    notifyListeners();
+  }
+
+  void setDefaultPaperSize(PdfPaperSize size) {
+    _defaultPaperSize = size;
+    notifyListeners();
+  }
+
+  void setDefaultQuality(PdfQuality quality) {
+    _defaultQuality = quality;
+    notifyListeners();
+  }
+
+  void setDefaultFilter(ScanFilter filter) {
+    _defaultFilter = filter;
     notifyListeners();
   }
 }

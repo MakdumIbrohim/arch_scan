@@ -34,6 +34,7 @@ class _FilterScreenState extends State<FilterScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedFilter = ThemeService.instance.defaultFilter;
     _processPreview();
   }
 

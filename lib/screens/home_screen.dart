@@ -822,7 +822,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSettingsTab() {
-    final v = ArchScanBridge.instance.getVersion();
     final themeService = ThemeService.instance;
 
     final accentColors = [
@@ -902,62 +901,92 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 20),
 
         // Section: Pengaturan Pindai & PDF
-        _buildSettingsSectionHeader('PENGATURAN PDF & PEMINDAIAN'),
+        _buildSettingsSectionHeader('PEMINDAIAN & DOKUMEN'),
         Card(
           child: Column(
             children: [
               ListTile(
-                title: const Text('Ukuran Kertas Bawaan'),
-                subtitle: const Text('A4 (210 x 297 mm) Standar ISO'),
+                title: const Text('Filter Pindaian Bawaan'),
+                subtitle: Text(themeService.defaultFilter.label),
                 trailing: const Icon(Icons.chevron_right, size: 20),
-                onTap: () {},
-              ),
-              const Divider(),
-              ListTile(
-                title: const Text('Kualitas Gambar'),
-                subtitle: const Text('Tinggi (300 DPI / Lossless Unsharp)'),
-                trailing: const Icon(Icons.chevron_right, size: 20),
-                onTap: () {},
-              ),
-              const Divider(),
-              ListTile(
-                title: const Text('Lapisan Teks OCR'),
-                subtitle: const Text('Aktif (Searchable PDF Text Layer)'),
-                trailing: const Icon(Icons.check_circle_outline, color: ArchTheme.teal, size: 20),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Section: Mesin Pemroses Dokumen (Rust Core)
-        _buildSettingsSectionHeader('MESIN PEMROSES (RUST CORE)'),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                title: const Text('Rust Core Engine FFI'),
-                subtitle: Text('Versi ${(v / 100).toStringAsFixed(1)} • libarch_scan_core.so'),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ArchTheme.teal.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'ONLINE',
-                    style: TextStyle(
-                      color: ArchTheme.teal,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (ctx) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: ScanFilter.values
+                            .map((f) => ListTile(
+                                  title: Text(f.label),
+                                  trailing: themeService.defaultFilter == f
+                                      ? Icon(Icons.check, color: themeService.accentColor)
+                                      : null,
+                                  onTap: () {
+                                    themeService.setDefaultFilter(f);
+                                    Navigator.pop(ctx);
+                                  },
+                                ))
+                            .toList(),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
               const Divider(),
-              const ListTile(
-                title: Text('Arsitektur Kompilasi'),
-                subtitle: Text('aarch64-linux-android • x86_64-linux-android'),
+              ListTile(
+                title: const Text('Ukuran Kertas PDF'),
+                subtitle: Text(themeService.defaultPaperSize.label),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (ctx) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: PdfPaperSize.values
+                            .map((p) => ListTile(
+                                  title: Text(p.label),
+                                  trailing: themeService.defaultPaperSize == p
+                                      ? Icon(Icons.check, color: themeService.accentColor)
+                                      : null,
+                                  onTap: () {
+                                    themeService.setDefaultPaperSize(p);
+                                    Navigator.pop(ctx);
+                                  },
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                title: const Text('Kualitas Ekspor PDF'),
+                subtitle: Text(themeService.defaultQuality.label),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (ctx) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: PdfQuality.values
+                            .map((q) => ListTile(
+                                  title: Text(q.label),
+                                  trailing: themeService.defaultQuality == q
+                                      ? Icon(Icons.check, color: themeService.accentColor)
+                                      : null,
+                                  onTap: () {
+                                    themeService.setDefaultQuality(q);
+                                    Navigator.pop(ctx);
+                                  },
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -971,37 +1000,74 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ListTile(
                 title: const Text('Dokumen Tersimpan'),
-                subtitle: Text('${_documents.length} berkas lokal'),
+                subtitle: Text('${_documents.length} dokumen'),
               ),
               const Divider(),
               ListTile(
                 title: const Text('Bersihkan Cache Sementara'),
-                subtitle: const Text('Hapus berkas preview dan pindaian yang belum disimpan'),
+                subtitle: const Text('Hapus berkas pratinjau yang tidak terpakai'),
                 trailing: const Icon(Icons.cleaning_services_outlined, size: 20),
                 onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   final dir = await DocumentStorageService.instance.appDirectory;
                   final temp = Directory('${dir.path}/temp');
                   if (temp.existsSync()) {
                     temp.deleteSync(recursive: true);
                   }
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cache sementara berhasil dibersihkan')),
-                    );
-                  }
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Cache sementara berhasil dibersihkan')),
+                  );
                 },
               ),
+              if (_documents.isNotEmpty) ...[
+                const Divider(),
+                ListTile(
+                  title: const Text(
+                    'Hapus Semua Dokumen',
+                    style: TextStyle(color: ArchTheme.danger),
+                  ),
+                  subtitle: const Text('Hapus permanen seluruh dokumen dari perangkat'),
+                  trailing: const Icon(Icons.delete_forever_outlined, color: ArchTheme.danger, size: 20),
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Hapus Semua Dokumen?'),
+                        content: const Text('Tindakan ini tidak dapat dibatalkan.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Batal'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: ArchTheme.danger),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Hapus Semua'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      for (final d in List.from(_documents)) {
+                        await DocumentStorageService.instance.deleteDocument(d.id);
+                      }
+                      _refresh();
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
         const SizedBox(height: 20),
 
         // Section: Tentang Aplikasi
-        _buildSettingsSectionHeader('TENTANG'),
+        _buildSettingsSectionHeader('INFORMASI APLIKASI'),
         const Card(
           child: ListTile(
-            title: Text('ArchScan'),
-            subtitle: Text('Versi 1.0.0 (Build 1) • Offline-First Document Scanner'),
+            title: Text('Versi Aplikasi'),
+            subtitle: Text('ArchScan 1.0.0'),
           ),
         ),
         const SizedBox(height: 40),

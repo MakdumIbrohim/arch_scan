@@ -340,15 +340,18 @@ enum PdfQuality {
 class PdfSettings {
   final PdfPaperSize paperSize;
   final PdfQuality quality;
+  final String? watermark;
 
   const PdfSettings({
     this.paperSize = PdfPaperSize.a4,
     this.quality = PdfQuality.high,
+    this.watermark,
   });
 
   Map<String, dynamic> toJson() => {
         'paper_size': paperSize.code,
         'quality': quality.code,
+        if (watermark != null && watermark!.isNotEmpty) 'watermark': watermark,
       };
 }
 

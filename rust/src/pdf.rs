@@ -37,6 +37,8 @@ pub struct PdfConfig {
     pub paper_size: PaperSize,
     #[serde(default)]
     pub quality: PdfQuality,
+    #[serde(default)]
+    pub watermark: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -262,6 +264,20 @@ pub fn create_searchable_pdf_with_config<P: AsRef<Path>>(
                 content.end_text();
             }
             content.restore_state();
+        }
+
+        // 3. Draw diagonal semi-transparent watermark text if configured
+        if let Some(ref wm) = config.watermark {
+            let trimmed = wm.trim();
+            if !trimmed.is_empty() {
+                content.save_state();
+                content.begin_text();
+                content.set_font(font_name, 32.0);
+                content.next_line(p.page_w * 0.15, p.page_h * 0.45);
+                content.show(Str(trimmed.as_bytes()));
+                content.end_text();
+                content.restore_state();
+            }
         }
 
         pdf.stream(p.content_ref, &content.finish());

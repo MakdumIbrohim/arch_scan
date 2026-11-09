@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _isGridView = false;
   String _searchQuery = '';
+  String _selectedCategory = 'Semua';
   final Set<String> _selectedDocIds = {};
   final ImagePicker _picker = ImagePicker();
 
@@ -752,32 +753,113 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDocumentsTab() {
+    final categories = ['Semua', 'Kartu ID', 'Bisnis', 'Pribadi'];
+    final categoryDocs = _documents.where((d) {
+      if (_selectedCategory == 'Kartu ID') {
+        return d.title.toLowerCase().contains('id card') ||
+            d.title.toLowerCase().contains('kartu');
+      } else if (_selectedCategory == 'Bisnis') {
+        return d.title.toLowerCase().contains('invoice') ||
+            d.title.toLowerCase().contains('bisnis');
+      } else if (_selectedCategory == 'Pribadi') {
+        return !d.title.toLowerCase().contains('id card') &&
+            !d.title.toLowerCase().contains('kartu');
+      }
+      return true;
+    }).toList();
+
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
         children: [
-          const Text('Semua Dokumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          ListTile(
-            leading: Icon(Icons.folder, color: Theme.of(context).colorScheme.primary),
-            title: const Text('Folder Default'),
-            subtitle: Text('${_documents.length} dokumen'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Semua Dokumen',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('${categoryDocs.length} Dokumen',
+                  style: const TextStyle(
+                      color: ArchTheme.textSecondary, fontSize: 12)),
+            ],
           ),
-          const Divider(),
-          ..._documents.map(
-            (d) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.description_outlined),
-              title: Text(d.title),
-              subtitle: Text('${d.pageCount} halaman'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => DocumentDetailScreen(documentId: d.id)),
+          const SizedBox(height: 12),
+          // Category filter chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categories.map((cat) {
+                final isSel = _selectedCategory == cat;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(cat),
+                    selected: isSel,
+                    selectedColor: Theme.of(context).colorScheme.primary,
+                    labelStyle: TextStyle(
+                      color: isSel
+                          ? Colors.white
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? ArchTheme.darkTextPrimary
+                              : ArchTheme.lightTextPrimary),
+                      fontSize: 12,
+                      fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    onSelected: (_) => setState(() => _selectedCategory = cat),
+                  ),
                 );
-              },
+              }).toList(),
             ),
           ),
+          const SizedBox(height: 12),
+          if (categoryDocs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: Center(
+                child: Text('Tidak ada dokumen di kategori $_selectedCategory',
+                    style: const TextStyle(color: ArchTheme.textSecondary)),
+              ),
+            )
+          else
+            ...categoryDocs.map(
+              (d) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: d.thumbnailPath.isNotEmpty
+                        ? Image.file(
+                            File(d.thumbnailPath),
+                            width: 44,
+                            height: 56,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 44,
+                            height: 56,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? ArchTheme.darkSurfaceMuted
+                                : ArchTheme.lightSurfaceMuted,
+                            child: const Icon(Icons.description, size: 20),
+                          ),
+                  ),
+                  title: Text(d.title,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                      '${d.pageCount} halaman • ${DateFormat('dd/MM/yyyy').format(d.updatedAt)}',
+                      style: const TextStyle(fontSize: 12, color: ArchTheme.textSecondary)),
+                  trailing: const Icon(Icons.chevron_right, size: 18),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              DocumentDetailScreen(documentId: d.id)),
+                    );
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -789,42 +871,63 @@ class _HomeScreenState extends State<HomeScreen> {
         'icon': Icons.picture_as_pdf_outlined,
         'color': const Color(0xFFEF4444),
         'title': 'Gabung Dokumen PDF',
-        'desc': 'Kombinasikan beberapa scan jadi satu file PDF'
+        'desc': 'Kombinasikan beberapa dokumen pindaian jadi satu berkas PDF'
+      },
+      {
+        'icon': Icons.view_agenda_outlined,
+        'color': const Color(0xFFF59E0B),
+        'title': 'Ekspor Gambar Panjang (Long Stitch)',
+        'desc': 'Satukan seluruh halaman secara vertikal jadi 1 berkas gambar panjang'
       },
       {
         'icon': Icons.credit_card_outlined,
         'color': const Color(0xFF8B5CF6),
         'title': 'Scan Kartu ID 2 Sisi',
-        'desc': 'Gabung depan dan belakang ke satu lembar A4'
+        'desc': 'Gabung tampak depan dan belakang kartu identitas ke 1 lembar A4'
       },
       {
         'icon': Icons.edit_outlined,
         'color': const Color(0xFF10B981),
         'title': 'Tanda Tangan Digital',
-        'desc': 'Buat tanda tangan kanvas dan terapkan ke dokumen'
+        'desc': 'Buat tanda tangan kanvas dan simpan untuk dokumen'
+      },
+      {
+        'icon': Icons.branding_watermark_outlined,
+        'color': const Color(0xFF0D9488),
+        'title': 'Watermark Dokumen',
+        'desc': 'Bubuhkan watermark teks kustom pada berkas PDF pindaian'
       },
       {
         'icon': Icons.compress_outlined,
         'color': const Color(0xFF2563EB),
         'title': 'Kompresi Ukuran Dokumen',
-        'desc': 'Perkecil ukuran berkas PDF untuk email'
+        'desc': 'Perkecil ukuran berkas PDF untuk keperluan kirim email/WA'
+      },
+      {
+        'icon': Icons.qr_code_scanner_outlined,
+        'color': const Color(0xFF06B6D4),
+        'title': 'Scan QR & Barcode',
+        'desc': 'Pindai kode QR atau barcode produk dari kamera'
       },
     ];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subColor = isDark ? ArchTheme.darkTextSecondary : ArchTheme.lightTextSecondary;
+    final subColor =
+        isDark ? ArchTheme.darkTextSecondary : ArchTheme.lightTextSecondary;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
       children: [
-        const Text('Pusat Alat Dokumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('Pusat Alat Dokumen',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         ...tools.map((t) {
           final iconColor = t['color'] as Color;
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               leading: Container(
                 width: 42,
                 height: 42,
@@ -834,18 +937,73 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Icon(t['icon'] as IconData, color: iconColor, size: 22),
               ),
-              title: Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              subtitle: Text(t['desc'] as String, style: TextStyle(fontSize: 12, color: subColor)),
+              title: Text(t['title'] as String,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 14)),
+              subtitle: Text(t['desc'] as String,
+                  style: TextStyle(fontSize: 12, color: subColor)),
               trailing: Icon(Icons.chevron_right, size: 18, color: subColor),
-              onTap: () {
-                if (t['title'] == 'Scan Kartu ID 2 Sisi') {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const IdCardScanScreen()));
-                } else if (t['title'] == 'Tanda Tangan Digital') {
+              onTap: () async {
+                final title = t['title'] as String;
+                if (title == 'Scan Kartu ID 2 Sisi') {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const IdCardScanScreen()));
+                } else if (title == 'Tanda Tangan Digital') {
                   _openSignaturePad();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Pilih dokumen dari Beranda untuk ${t['title']}')),
+                } else if (title.contains('Gambar Panjang')) {
+                  if (_documents.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Belum ada dokumen untuk digabung')),
+                    );
+                    return;
+                  }
+                  // Let user pick a document to stitch
+                  final selected = await showDialog<ScanDocument>(
+                    context: context,
+                    builder: (ctx) => SimpleDialog(
+                      title: const Text('Pilih Dokumen'),
+                      children: _documents
+                          .map((d) => SimpleDialogOption(
+                                onPressed: () => Navigator.pop(ctx, d),
+                                child: Text('${d.title} (${d.pageCount} hal.)'),
+                              ))
+                          .toList(),
+                    ),
                   );
+                  if (selected != null) {
+                    final out = await DocumentStorageService.instance
+                        .stitchDocumentToLongImage(selected);
+                    if (out != null) {
+                      await SharePlus.instance.share(ShareParams(
+                        files: [XFile(out)],
+                        text: '${selected.title} (Gambar Panjang)',
+                      ));
+                    }
+                  }
+                } else if (title == 'Gabung Dokumen PDF') {
+                  setState(() => _currentTabIndex = 0);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Pilih dokumen yang ingin digabung menggunakan kotak ceklis di Beranda'),
+                    ),
+                  );
+                } else if (title == 'Scan QR & Barcode') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Arahkan kamera ke kode QR / Barcode')),
+                  );
+                } else {
+                  if (_documents.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => DocumentDetailScreen(
+                              documentId: _documents.first.id)),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Pindai dokumen terlebih dahulu untuk $title')),
+                    );
+                  }
                 }
               },
             ),

@@ -102,6 +102,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
 
     PdfPaperSize selectedPaper = ThemeService.instance.defaultPaperSize;
     PdfQuality selectedQuality = ThemeService.instance.defaultQuality;
+    final watermarkCtrl = TextEditingController();
 
     final config = await showModalBottomSheet<PdfSettings>(
       context: context,
@@ -175,7 +176,22 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              const Text(
+                'Watermark (Opsional)',
+                style: TextStyle(
+                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: watermarkCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. SALINAN / CONFIDENTIAL',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -184,6 +200,9 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     PdfSettings(
                       paperSize: selectedPaper,
                       quality: selectedQuality,
+                      watermark: watermarkCtrl.text.trim().isNotEmpty
+                          ? watermarkCtrl.text.trim()
+                          : null,
                     ),
                   ),
                   icon: const Icon(Icons.download_done),

@@ -1,4 +1,7 @@
-#[no_mangle]
-pub extern "C" fn arch_scan_version() -> i32 {
-    100
-}
+pub mod bridge;
+pub mod detection;
+pub mod enhancement;
+pub mod pdf;
+pub mod perspective;
+
+pub use bridge::*;

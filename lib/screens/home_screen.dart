@@ -575,9 +575,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Checkbox(
                     value: isSelected,
-                    activeColor: Colors.white,
-                    checkColor: Colors.black,
-                    side: const BorderSide(color: ArchTheme.border, width: 1.5),
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    checkColor: Colors.white,
+                    side: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
                     onChanged: (val) {
                       setState(() {
                         if (val == true) {
@@ -674,8 +674,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 4,
                   child: Checkbox(
                     value: isSelected,
-                    activeColor: Colors.white,
-                    checkColor: Colors.black,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    checkColor: Colors.white,
                     side: const BorderSide(color: Colors.white70, width: 1.5),
                     onChanged: (val) {
                       setState(() {
@@ -785,24 +785,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildToolsTab() {
     final tools = [
-      {'icon': Icons.picture_as_pdf, 'title': 'Gabung Dokumen PDF', 'desc': 'Kombinasikan beberapa scan jadi satu file PDF'},
-      {'icon': Icons.credit_card, 'title': 'Scan Kartu ID 2 Sisi', 'desc': 'Gabung depan dan belakang ke satu lembar A4'},
-      {'icon': Icons.draw, 'title': 'Tanda Tangan Digital', 'desc': 'Buat tanda tangan kanvas dan terapkan ke dokumen'},
-      {'icon': Icons.compress, 'title': 'Kompresi Ukuran Dokumen', 'desc': 'Perkecil ukuran berkas PDF untuk email'},
+      {
+        'icon': Icons.picture_as_pdf_outlined,
+        'color': const Color(0xFFEF4444),
+        'title': 'Gabung Dokumen PDF',
+        'desc': 'Kombinasikan beberapa scan jadi satu file PDF'
+      },
+      {
+        'icon': Icons.credit_card_outlined,
+        'color': const Color(0xFF8B5CF6),
+        'title': 'Scan Kartu ID 2 Sisi',
+        'desc': 'Gabung depan dan belakang ke satu lembar A4'
+      },
+      {
+        'icon': Icons.edit_outlined,
+        'color': const Color(0xFF10B981),
+        'title': 'Tanda Tangan Digital',
+        'desc': 'Buat tanda tangan kanvas dan terapkan ke dokumen'
+      },
+      {
+        'icon': Icons.compress_outlined,
+        'color': const Color(0xFF2563EB),
+        'title': 'Kompresi Ukuran Dokumen',
+        'desc': 'Perkecil ukuran berkas PDF untuk email'
+      },
     ];
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subColor = isDark ? ArchTheme.darkTextSecondary : ArchTheme.lightTextSecondary;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
       children: [
         const Text('Pusat Alat Dokumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        ...tools.map(
-          (t) => Card(
+        ...tools.map((t) {
+          final iconColor = t['color'] as Color;
+          return Card(
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
-              leading: Icon(t['icon'] as IconData, color: Colors.white),
-              title: Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(t['desc'] as String, style: const TextStyle(fontSize: 12, color: ArchTheme.textSecondary)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(t['icon'] as IconData, color: iconColor, size: 22),
+              ),
+              title: Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              subtitle: Text(t['desc'] as String, style: TextStyle(fontSize: 12, color: subColor)),
+              trailing: Icon(Icons.chevron_right, size: 18, color: subColor),
               onTap: () {
                 if (t['title'] == 'Scan Kartu ID 2 Sisi') {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const IdCardScanScreen()));
@@ -815,8 +849,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }

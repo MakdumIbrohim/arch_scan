@@ -54,12 +54,14 @@ class _BatchProcessScreenState extends State<BatchProcessScreen> {
       // 1. Detect corners via Rust
       final corners = ArchScanBridge.instance.detectCorners(rawPath);
 
-      // 2. Warp & apply Magic Color filter via Rust
+      final defaultFilter = ThemeService.instance.defaultFilter;
+
+      // 2. Warp & apply configured filter via Rust
       final success = ArchScanBridge.instance.processPage(
         inputPath: rawPath,
         outputPath: outPath,
         corners: corners,
-        filter: ScanFilter.magicColor,
+        filter: defaultFilter,
         rotationDegrees: 0,
       );
 
@@ -71,7 +73,7 @@ class _BatchProcessScreenState extends State<BatchProcessScreen> {
           rawImagePath: rawPath,
           processedImagePath: finalPath,
           corners: corners,
-          filter: ScanFilter.magicColor,
+          filter: defaultFilter,
           rotationDegrees: 0,
         ),
       );
@@ -83,9 +85,22 @@ class _BatchProcessScreenState extends State<BatchProcessScreen> {
     ScanDocument targetDoc;
     if (widget.documentId != null) {
       final docs = await DocumentStorageService.instance.loadDocuments();
-      targetDoc = docs.firstWhere((d) => d.id == widget.documentId);
-      targetDoc.pages.addAll(generatedPages);
-      targetDoc.updatedAt = DateTime.now();
+      final idx = docs.indexWhere((d) => d.id == widget.documentId);
+      if (idx >= 0) {
+        targetDoc = docs[idx];
+        targetDoc.pages.addAll(generatedPages);
+        targetDoc.updatedAt = DateTime.now();
+      } else {
+        final now = DateTime.now();
+        targetDoc = ScanDocument(
+          id: const Uuid().v4(),
+          title:
+              'Batch Scan ${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+          createdAt: now,
+          updatedAt: now,
+          pages: generatedPages,
+        );
+      }
     } else {
       final now = DateTime.now();
       targetDoc = ScanDocument(

@@ -112,14 +112,28 @@ class _FilterScreenState extends State<FilterScreen> {
     ScanDocument targetDoc;
     if (widget.documentId != null) {
       final docs = await DocumentStorageService.instance.loadDocuments();
-      targetDoc = docs.firstWhere((d) => d.id == widget.documentId);
-      final pIdx = targetDoc.pages.indexWhere((p) => p.id == pageId);
-      if (pIdx >= 0) {
-        targetDoc.pages[pIdx] = scanPage;
+      final dIdx = docs.indexWhere((d) => d.id == widget.documentId);
+      if (dIdx >= 0) {
+        targetDoc = docs[dIdx];
+        final pIdx = targetDoc.pages.indexWhere((p) => p.id == pageId);
+        if (pIdx >= 0) {
+          targetDoc.pages[pIdx] = scanPage;
+        } else {
+          targetDoc.pages.add(scanPage);
+        }
+        targetDoc.updatedAt = DateTime.now();
       } else {
-        targetDoc.pages.add(scanPage);
+        final docId = const Uuid().v4();
+        final now = DateTime.now();
+        targetDoc = ScanDocument(
+          id: docId,
+          title:
+              'Document ${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+          createdAt: now,
+          updatedAt: now,
+          pages: [scanPage],
+        );
       }
-      targetDoc.updatedAt = DateTime.now();
     } else {
       final docId = const Uuid().v4();
       final now = DateTime.now();

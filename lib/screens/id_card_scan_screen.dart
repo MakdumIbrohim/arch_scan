@@ -22,8 +22,33 @@ class _IdCardScanScreenState extends State<IdCardScanScreen> {
   bool _isProcessing = false;
 
   Future<void> _captureCard(bool isFront) async {
-    final picked = await _picker.pickImage(source: ImageSource.camera);
-    if (picked == null) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Ambil Foto Kamera'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+    final picked = await _picker.pickImage(source: source);
+    if (picked == null || !mounted) return;
 
     setState(() {
       if (isFront) {

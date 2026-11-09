@@ -74,12 +74,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openSignaturePad() async {
-    await showModalBottomSheet(
+    final sigPath = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const SignaturePadModal(),
     );
+    if (sigPath != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tanda tangan digital berhasil disimpan')),
+      );
+    }
   }
 
   Future<void> _batchDeleteSelected() async {

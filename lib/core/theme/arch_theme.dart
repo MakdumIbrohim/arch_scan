@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
 class ArchTheme {
-  static const Color primary = Color(0xFF00E5FF);
-  static const Color primaryDark = Color(0xFF00B0FF);
-  static const Color accent = Color(0xFF10B981);
-  static const Color background = Color(0xFF0B132B);
-  static const Color surface = Color(0xFF1C2541);
-  static const Color surfaceLight = Color(0xFF3A506B);
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color border = Color(0xFF334155);
-  static const Color danger = Color(0xFFEF4444);
+  static const Color background = Color(0xFF09090B); // Zinc 950
+  static const Color surface = Color(0xFF18181B);    // Zinc 900
+  static const Color surfaceMuted = Color(0xFF27272A); // Zinc 800
+  static const Color border = Color(0xFF3F3F46);     // Zinc 700
+  static const Color textPrimary = Color(0xFFFAFAFA);
+  static const Color primary = textPrimary;
+  static const Color textSecondary = Color(0xFFA1A1AA);
+  static const Color accent = Color(0xFF38BDF8);     // Muted Sky
+  static const Color danger = Color(0xFFF87171);
 
   static ThemeData get darkTheme {
     return ThemeData(
@@ -18,7 +17,7 @@ class ArchTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: background,
       colorScheme: const ColorScheme.dark(
-        primary: primary,
+        primary: textPrimary,
         secondary: accent,
         surface: surface,
         error: danger,
@@ -26,42 +25,50 @@ class ArchTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: surface,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
         ),
-        iconTheme: IconThemeData(color: primary),
+        iconTheme: IconThemeData(color: textPrimary, size: 20),
       ),
       cardTheme: CardThemeData(
         color: surface,
-        elevation: 2,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: border, width: 0.8),
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: border, width: 1),
         ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: border,
+        thickness: 1,
+        space: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: const Color(0xFF001E2B),
+          backgroundColor: textPrimary,
+          foregroundColor: background,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(6),
           ),
           textStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: Color(0xFF001E2B),
-        elevation: 4,
+        backgroundColor: textPrimary,
+        foregroundColor: background,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
       ),
     );
   }

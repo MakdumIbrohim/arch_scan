@@ -21,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<ScanDocument> _documents = [];
   bool _isLoading = true;
+  bool _isGridView = false;
   String _searchQuery = '';
   final ImagePicker _picker = ImagePicker();
 
@@ -101,47 +102,19 @@ class _HomeScreenState extends State<HomeScreen> {
       return d.title.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-    final rustVersion = ArchScanBridge.instance.getVersion();
-
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: ArchTheme.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: ArchTheme.primary, width: 1),
-              ),
-              child: const Text(
-                'ARCH',
-                style: TextStyle(
-                  color: ArchTheme.primary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text('ArchScan'),
-          ],
-        ),
+        title: const Text('ArchScan'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Center(
-              child: Text(
-                'Rust v${(rustVersion / 100).toStringAsFixed(1)}',
-                style: const TextStyle(
-                  color: ArchTheme.accent,
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                ),
-              ),
+          IconButton(
+            icon: Icon(
+              _isGridView ? Icons.view_list_outlined : Icons.grid_view_outlined,
+              size: 20,
             ),
+            tooltip: _isGridView ? 'List View' : 'Grid View',
+            onPressed: () => setState(() => _isGridView = !_isGridView),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -211,137 +184,236 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     : RefreshIndicator(
-                        color: ArchTheme.primary,
+                        color: ArchTheme.textPrimary,
                         onRefresh: _refresh,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final doc = filtered[index];
-                            final dateStr = DateFormat('MMM dd, yyyy • HH:mm')
-                                .format(doc.updatedAt);
-
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () async {
-                                  await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => DocumentDetailScreen(
-                                        documentId: doc.id,
-                                      ),
-                                    ),
-                                  );
-                                  _refresh();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Row(
-                                    children: [
-                                      // Thumbnail
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: doc.thumbnailPath.isNotEmpty
-                                            ? Image.file(
-                                                File(doc.thumbnailPath),
-                                                width: 60,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Container(
-                                                width: 60,
-                                                height: 80,
-                                                color: ArchTheme.surfaceLight,
-                                                child: const Icon(Icons.image),
-                                              ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      // Info
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              doc.title,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              '${doc.pageCount} ${doc.pageCount == 1 ? 'page' : 'pages'}',
-                                              style: const TextStyle(
-                                                color: ArchTheme.primary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              dateStr,
-                                              style: const TextStyle(
-                                                color: ArchTheme.textSecondary,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Menu options
-                                      PopupMenuButton<String>(
-                                        icon: const Icon(Icons.more_vert,
-                                            color: ArchTheme.textSecondary),
-                                        color: ArchTheme.surface,
-                                        onSelected: (val) {
-                                          if (val == 'delete') {
-                                            _deleteDocument(doc);
-                                          } else if (val == 'share') {
-                                            _shareDocument(doc);
-                                          }
-                                        },
-                                        itemBuilder: (_) => [
-                                          const PopupMenuItem(
-                                            value: 'share',
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.share,
-                                                    color: ArchTheme.accent,
-                                                    size: 20),
-                                                SizedBox(width: 8),
-                                                Text('Share PDF',
-                                                    style: TextStyle(
-                                                        color: ArchTheme.textPrimary)),
-                                              ],
+                        child: _isGridView
+                            ? GridView.builder(
+                                padding: const EdgeInsets.all(16),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.72,
+                                ),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final doc = filtered[index];
+                                  final dateStr =
+                                      DateFormat('MMM dd').format(doc.updatedAt);
+                                  return Card(
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      onTap: () async {
+                                        await Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DocumentDetailScreen(
+                                                    documentId: doc.id),
+                                          ),
+                                        );
+                                        _refresh();
+                                      },
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Container(
+                                              width: double.infinity,
+                                              color: ArchTheme.surfaceMuted,
+                                              child: doc.thumbnailPath.isNotEmpty
+                                                  ? Image.file(
+                                                      File(doc.thumbnailPath),
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : const Icon(Icons.description,
+                                                      color: ArchTheme
+                                                          .textSecondary),
                                             ),
                                           ),
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Row(
+                                          Padding(
+                                            padding: const EdgeInsets.all(10.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Icon(Icons.delete_outline,
-                                                    color: ArchTheme.danger,
-                                                    size: 20),
-                                                SizedBox(width: 8),
-                                                Text('Delete',
-                                                    style: TextStyle(
-                                                        color: ArchTheme.danger)),
+                                                Text(
+                                                  doc.title,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      '${doc.pageCount} p.',
+                                                      style: const TextStyle(
+                                                        color: ArchTheme
+                                                            .textSecondary,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      dateStr,
+                                                      style: const TextStyle(
+                                                        color: ArchTheme
+                                                            .textSecondary,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final doc = filtered[index];
+                                  final dateStr =
+                                      DateFormat('MMM dd, yyyy • HH:mm')
+                                          .format(doc.updatedAt);
+
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () async {
+                                        await Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DocumentDetailScreen(
+                                                    documentId: doc.id),
+                                          ),
+                                        );
+                                        _refresh();
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(10.0),
+                                        child: Row(
+                                          children: [
+                                            // Thumbnail
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: doc.thumbnailPath.isNotEmpty
+                                                  ? Image.file(
+                                                      File(doc.thumbnailPath),
+                                                      width: 52,
+                                                      height: 68,
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : Container(
+                                                      width: 52,
+                                                      height: 68,
+                                                      color:
+                                                          ArchTheme.surfaceMuted,
+                                                      child: const Icon(
+                                                          Icons.description),
+                                                    ),
+                                            ),
+                                            const SizedBox(width: 14),
+                                            // Info
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    doc.title,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${doc.pageCount} ${doc.pageCount == 1 ? 'page' : 'pages'} • $dateStr',
+                                                    style: const TextStyle(
+                                                      color: ArchTheme
+                                                          .textSecondary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            // Menu options
+                                            PopupMenuButton<String>(
+                                              icon: const Icon(Icons.more_vert,
+                                                  color:
+                                                      ArchTheme.textSecondary,
+                                                  size: 18),
+                                              color: ArchTheme.surface,
+                                              onSelected: (val) {
+                                                if (val == 'delete') {
+                                                  _deleteDocument(doc);
+                                                } else if (val == 'share') {
+                                                  _shareDocument(doc);
+                                                }
+                                              },
+                                              itemBuilder: (_) => [
+                                                const PopupMenuItem(
+                                                  value: 'share',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.share,
+                                                          color:
+                                                              ArchTheme.accent,
+                                                          size: 18),
+                                                      SizedBox(width: 8),
+                                                      Text('Share PDF',
+                                                          style: TextStyle(
+                                                              fontSize: 13)),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.delete_outline,
+                                                          color:
+                                                              ArchTheme.danger,
+                                                          size: 18),
+                                                      SizedBox(width: 8),
+                                                      Text('Delete',
+                                                          style: TextStyle(
+                                                              color: ArchTheme
+                                                                  .danger,
+                                                              fontSize: 13)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       ),
           ),
         ],

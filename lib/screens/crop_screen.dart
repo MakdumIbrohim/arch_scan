@@ -77,13 +77,13 @@ class _CropScreenState extends State<CropScreen> {
           ),
           IconButton(
             onPressed: _detectCorners,
-            icon: const Icon(Icons.auto_fix_high, color: ArchTheme.primary),
+            icon: const Icon(Icons.auto_fix_high, color: Colors.white),
             tooltip: 'Auto Detect',
           ),
         ],
       ),
       body: _isDetecting
-          ? const Center(child: CircularProgressIndicator(color: ArchTheme.primary))
+          ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Column(
               children: [
                 Expanded(

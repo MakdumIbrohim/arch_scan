@@ -204,15 +204,16 @@ class _FilterScreenState extends State<FilterScreen> {
                     child: ChoiceChip(
                       label: Text(f.label),
                       selected: isSelected,
-                      selectedColor: ArchTheme.primary.withOpacity(0.2),
-                      backgroundColor: ArchTheme.surfaceLight,
+                      selectedColor: Colors.white,
+                      backgroundColor: ArchTheme.surfaceMuted,
                       labelStyle: TextStyle(
-                        color: isSelected ? ArchTheme.primary : ArchTheme.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.black : ArchTheme.textPrimary,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 13,
                       ),
                       side: BorderSide(
-                        color: isSelected ? ArchTheme.primary : Colors.transparent,
-                        width: 1.5,
+                        color: isSelected ? Colors.white : ArchTheme.border,
+                        width: 1.0,
                       ),
                       onSelected: (_) => _onFilterSelected(f),
                     ),

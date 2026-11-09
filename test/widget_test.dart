@@ -43,6 +43,5 @@ void main() {
     await tester.pump();
 
     expect(find.text('ArchScan'), findsOneWidget);
-    expect(find.text('ARCH'), findsOneWidget);
   });
 }

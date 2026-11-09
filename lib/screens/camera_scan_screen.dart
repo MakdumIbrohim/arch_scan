@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/theme/arch_theme.dart';
@@ -12,50 +13,61 @@ class CameraScanScreen extends StatefulWidget {
   State<CameraScanScreen> createState() => _CameraScanScreenState();
 }
 
-class _CameraScanScreenState extends State<CameraScanScreen>
-    with SingleTickerProviderStateMixin {
+class _CameraScanScreenState extends State<CameraScanScreen> {
   final ImagePicker _picker = ImagePicker();
+  final List<String> _batchQueue = [];
   bool _isBatchMode = false;
   bool _flashOn = false;
-  late AnimationController _pulseController;
 
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _captureFromCamera() async {
+  Future<void> _captureImage() async {
     final picked = await _picker.pickImage(source: ImageSource.camera);
     if (picked == null || !mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => CropScreen(
-          imagePath: picked.path,
-          documentId: widget.documentId,
+    if (_isBatchMode) {
+      setState(() {
+        _batchQueue.add(picked.path);
+      });
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => CropScreen(
+            imagePath: picked.path,
+            documentId: widget.documentId,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Future<void> _pickFromGallery() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked == null || !mounted) return;
+    if (_isBatchMode) {
+      final pickedList = await _picker.pickMultiImage();
+      if (pickedList.isEmpty || !mounted) return;
+      setState(() {
+        _batchQueue.addAll(pickedList.map((e) => e.path));
+      });
+    } else {
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      if (picked == null || !mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => CropScreen(
+            imagePath: picked.path,
+            documentId: widget.documentId,
+          ),
+        ),
+      );
+    }
+  }
 
+  void _finishBatch() {
+    if (_batchQueue.isEmpty) return;
+
+    final firstPath = _batchQueue.removeAt(0);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => CropScreen(
-          imagePath: picked.path,
+          imagePath: firstPath,
           documentId: widget.documentId,
         ),
       ),
@@ -68,123 +80,142 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Scan Document'),
+        title: Text(_isBatchMode ? 'Batch Scanner' : 'Document Scanner'),
         actions: [
           IconButton(
             icon: Icon(
               _flashOn ? Icons.flash_on : Icons.flash_off,
-              color: _flashOn ? ArchTheme.primary : Colors.white70,
+              color: Colors.white,
             ),
             tooltip: 'Flash',
-            onPressed: () {
-              setState(() => _flashOn = !_flashOn);
-            },
+            onPressed: () => setState(() => _flashOn = !_flashOn),
           ),
-          IconButton(
-            icon: Icon(
-              _isBatchMode ? Icons.burst_mode : Icons.photo_camera,
-              color: _isBatchMode ? ArchTheme.accent : Colors.white70,
-            ),
-            tooltip: _isBatchMode ? 'Batch Mode' : 'Single Page',
+          TextButton(
             onPressed: () {
-              setState(() => _isBatchMode = !_isBatchMode);
+              setState(() {
+                _isBatchMode = !_isBatchMode;
+                _batchQueue.clear();
+              });
             },
+            child: Text(
+              _isBatchMode ? 'BATCH' : 'SINGLE',
+              style: TextStyle(
+                color: _isBatchMode ? ArchTheme.accent : Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Viewfinder background
-          Container(
-            color: const Color(0xFF0F172A),
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  final glow = _pulseController.value * 0.3 + 0.7;
-                  return CustomPaint(
-                    size: const Size(300, 420),
-                    painter: _ViewfinderOverlayPainter(
-                      glowOpacity: glow,
-                      color: ArchTheme.primary,
-                    ),
-                  );
-                },
-              ),
+          // Minimalist Viewfinder Area
+          Center(
+            child: CustomPaint(
+              size: const Size(280, 390),
+              painter: _MinimalViewfinderPainter(),
             ),
           ),
-          // Viewfinder instruction
+          // Clean HUD Instruction
           Positioned(
-            top: 24,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _isBatchMode
-                    ? 'Batch Scan: capture consecutive pages'
-                    : 'Position document within guide frame',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-            ),
-          ),
-          // Bottom controls
-          Positioned(
-            bottom: 32,
+            top: 20,
             left: 0,
             right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF18181B),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: ArchTheme.border, width: 1),
+                ),
+                child: Text(
+                  _isBatchMode
+                      ? 'Batch Mode: ${_batchQueue.length} page(s) captured'
+                      : 'Align document within borders',
+                  style: const TextStyle(
+                    color: ArchTheme.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Bottom Controls
+          Positioned(
+            bottom: 30,
+            left: 24,
+            right: 24,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Gallery button
                 IconButton(
                   onPressed: _pickFromGallery,
-                  icon: const Icon(Icons.photo_library, color: Colors.white, size: 28),
+                  icon: const Icon(Icons.photo_library_outlined,
+                      color: Colors.white, size: 26),
                   tooltip: 'Gallery',
                 ),
-                // Shutter button
+                // Shutter button (clean double circle)
                 GestureDetector(
-                  onTap: _captureFromCamera,
+                  onTap: _captureImage,
                   child: Container(
-                    width: 76,
-                    height: 76,
+                    width: 72,
+                    height: 72,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: ArchTheme.primary, width: 4),
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
                     child: Container(
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.camera_alt,
-                          color: Color(0xFF0B132B), size: 32),
                     ),
                   ),
                 ),
-                // Mode indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: ArchTheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _isBatchMode ? 'BATCH' : 'SINGLE',
-                    style: TextStyle(
-                      color: _isBatchMode ? ArchTheme.accent : ArchTheme.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                // Batch finish button or empty spacer
+                _isBatchMode && _batchQueue.isNotEmpty
+                    ? GestureDetector(
+                        onTap: _finishBatch,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: ArchTheme.surfaceMuted,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: ArchTheme.border, width: 1),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.file(
+                                File(_batchQueue.last),
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                              ),
+                              Container(
+                                color: Colors.black54,
+                                child: Center(
+                                  child: Text(
+                                    '${_batchQueue.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : const SizedBox(width: 48),
               ],
             ),
           ),
@@ -194,36 +225,26 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   }
 }
 
-class _ViewfinderOverlayPainter extends CustomPainter {
-  final double glowOpacity;
-  final Color color;
-
-  _ViewfinderOverlayPainter({required this.glowOpacity, required this.color});
-
+class _MinimalViewfinderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
 
-    final framePaint = Paint()
-      ..color = color.withOpacity(0.3 * glowOpacity)
+    // Subtle 1px boundary box
+    final boxPaint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.0;
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), boxPaint);
 
+    // Sharp 2px white corner brackets
     final cornerPaint = Paint()
-      ..color = color.withOpacity(glowOpacity)
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 2.0;
 
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, w, h),
-      const Radius.circular(16),
-    );
-    canvas.drawRRect(rrect, framePaint);
-
-    // Draw 4 corner reticles
-    const len = 30.0;
+    const len = 20.0;
     // Top-Left
     canvas.drawLine(const Offset(0, len), const Offset(0, 0), cornerPaint);
     canvas.drawLine(const Offset(0, 0), const Offset(len, 0), cornerPaint);
@@ -239,6 +260,5 @@ class _ViewfinderOverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ViewfinderOverlayPainter oldDelegate) =>
-      oldDelegate.glowOpacity != glowOpacity;
+  bool shouldRepaint(covariant _MinimalViewfinderPainter oldDelegate) => false;
 }

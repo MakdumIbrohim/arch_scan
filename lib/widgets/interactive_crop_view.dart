@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/bridge/arch_scan_bridge.dart';
-import '../core/theme/arch_theme.dart';
 
 class InteractiveCropView extends StatefulWidget {
   final String imagePath;
@@ -21,7 +20,10 @@ class InteractiveCropView extends StatefulWidget {
 
 class _InteractiveCropViewState extends State<InteractiveCropView> {
   late List<Point2D> _corners;
-  int? _activeCornerIndex;
+  // 0..3 = corners (TL, TR, BR, BL)
+  // 4..7 = edges (Top, Right, Bottom, Left)
+  int? _activeTargetIndex;
+  Offset? _lastPanPos;
 
   @override
   void initState() {
@@ -43,42 +45,86 @@ class _InteractiveCropViewState extends State<InteractiveCropView> {
     final h = constraints.maxHeight;
 
     int? closestIdx;
-    double closestDist = 50.0; // Touch radius
+    double closestDist = 44.0; // Touch radius
 
-    for (int i = 0; i < _corners.length; i++) {
-      final cornerPos = Offset(_corners[i].x * w, _corners[i].y * h);
-      final dist = (cornerPos - touch).distance;
+    // 1. Check 4 corners
+    for (int i = 0; i < 4; i++) {
+      final pos = Offset(_corners[i].x * w, _corners[i].y * h);
+      final dist = (pos - touch).distance;
       if (dist < closestDist) {
         closestDist = dist;
         closestIdx = i;
       }
     }
 
+    // 2. Check 4 edge midpoints
+    if (closestIdx == null) {
+      final edgeMidpoints = [
+        Offset((_corners[0].x + _corners[1].x) * 0.5 * w, (_corners[0].y + _corners[1].y) * 0.5 * h), // Top
+        Offset((_corners[1].x + _corners[2].x) * 0.5 * w, (_corners[1].y + _corners[2].y) * 0.5 * h), // Right
+        Offset((_corners[2].x + _corners[3].x) * 0.5 * w, (_corners[2].y + _corners[3].y) * 0.5 * h), // Bottom
+        Offset((_corners[3].x + _corners[0].x) * 0.5 * w, (_corners[3].y + _corners[0].y) * 0.5 * h), // Left
+      ];
+
+      for (int i = 0; i < 4; i++) {
+        final dist = (edgeMidpoints[i] - touch).distance;
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestIdx = 4 + i;
+        }
+      }
+    }
+
     setState(() {
-      _activeCornerIndex = closestIdx;
+      _activeTargetIndex = closestIdx;
+      _lastPanPos = touch;
     });
   }
 
   void _onPanUpdate(DragUpdateDetails details, BoxConstraints constraints) {
-    if (_activeCornerIndex == null) return;
+    if (_activeTargetIndex == null || _lastPanPos == null) return;
 
     final w = constraints.maxWidth;
     final h = constraints.maxHeight;
     final touch = details.localPosition;
+    final dx = (touch.dx - _lastPanPos!.dx) / w;
+    final dy = (touch.dy - _lastPanPos!.dy) / h;
+    _lastPanPos = touch;
 
-    final nx = (touch.dx / w).clamp(0.0, 1.0);
-    final ny = (touch.dy / h).clamp(0.0, 1.0);
+    final target = _activeTargetIndex!;
 
-    setState(() {
-      _corners[_activeCornerIndex!] = Point2D(nx, ny);
-    });
+    if (target < 4) {
+      // Single corner movement
+      final nx = (_corners[target].x + dx).clamp(0.0, 1.0);
+      final ny = (_corners[target].y + dy).clamp(0.0, 1.0);
+      setState(() {
+        _corners[target] = Point2D(nx, ny);
+      });
+    } else {
+      // Edge midpoint moves both adjacent corners
+      final edge = target - 4;
+      final c1 = edge;
+      final c2 = (edge + 1) % 4;
+
+      setState(() {
+        _corners[c1] = Point2D(
+          (_corners[c1].x + dx).clamp(0.0, 1.0),
+          (_corners[c1].y + dy).clamp(0.0, 1.0),
+        );
+        _corners[c2] = Point2D(
+          (_corners[c2].x + dx).clamp(0.0, 1.0),
+          (_corners[c2].y + dy).clamp(0.0, 1.0),
+        );
+      });
+    }
 
     widget.onCornersChanged(_corners);
   }
 
   void _onPanEnd(DragEndDetails details) {
     setState(() {
-      _activeCornerIndex = null;
+      _activeTargetIndex = null;
+      _lastPanPos = null;
     });
   }
 
@@ -100,7 +146,7 @@ class _InteractiveCropViewState extends State<InteractiveCropView> {
               CustomPaint(
                 painter: _CropOverlayPainter(
                   corners: _corners,
-                  activeIndex: _activeCornerIndex,
+                  activeTarget: _activeTargetIndex,
                 ),
               ),
             ],
@@ -113,70 +159,65 @@ class _InteractiveCropViewState extends State<InteractiveCropView> {
 
 class _CropOverlayPainter extends CustomPainter {
   final List<Point2D> corners;
-  final int? activeIndex;
+  final int? activeTarget;
 
-  _CropOverlayPainter({required this.corners, this.activeIndex});
+  _CropOverlayPainter({required this.corners, this.activeTarget});
 
   @override
   void paint(Canvas canvas, Size size) {
     if (corners.length < 4) return;
 
-    final points = corners.map((c) => Offset(c.x * size.width, c.y * size.height)).toList();
+    final pts = corners.map((c) => Offset(c.x * size.width, c.y * size.height)).toList();
 
-    // 1. Draw darkened overlay outside polygon
-    final bgPaint = Paint()..color = Colors.black.withOpacity(0.5);
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    // 1. Clean darkened overlay outside crop box
+    final bgPaint = Paint()..color = Colors.black.withOpacity(0.6);
+    final fullRect = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final quadPath = Path()
-      ..moveTo(points[0].dx, points[0].dy)
-      ..lineTo(points[1].dx, points[1].dy)
-      ..lineTo(points[2].dx, points[2].dy)
-      ..lineTo(points[3].dx, points[3].dy)
+      ..moveTo(pts[0].dx, pts[0].dy)
+      ..lineTo(pts[1].dx, pts[1].dy)
+      ..lineTo(pts[2].dx, pts[2].dy)
+      ..lineTo(pts[3].dx, pts[3].dy)
       ..close();
 
-    final diffPath = Path.combine(PathOperation.difference, path, quadPath);
-    canvas.drawPath(diffPath, bgPaint);
+    final diff = Path.combine(PathOperation.difference, fullRect, quadPath);
+    canvas.drawPath(diff, bgPaint);
 
-    // 2. Draw border lines
+    // 2. Clean 1.5px solid white border lines
     final linePaint = Paint()
-      ..color = ArchTheme.primary
-      ..strokeWidth = 2.5
+      ..color = Colors.white
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     canvas.drawPath(quadPath, linePaint);
 
-    // 3. Draw grid lines (rule of thirds inside quad)
-    final gridPaint = Paint()
-      ..color = ArchTheme.primary.withOpacity(0.4)
-      ..strokeWidth = 1.0
+    // 3. Draw 4 corner handles (circle with inner dot)
+    final handleFill = Paint()..color = Colors.white;
+    final handleStroke = Paint()
+      ..color = const Color(0xFF18181B)
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    for (double t in [1.0 / 3.0, 2.0 / 3.0]) {
-      final top = Offset.lerp(points[0], points[1], t)!;
-      final bottom = Offset.lerp(points[3], points[2], t)!;
-      canvas.drawLine(top, bottom, gridPaint);
+    for (int i = 0; i < 4; i++) {
+      final p = pts[i];
+      final isSel = (i == activeTarget);
+      final r = isSel ? 12.0 : 8.0;
 
-      final left = Offset.lerp(points[0], points[3], t)!;
-      final right = Offset.lerp(points[1], points[2], t)!;
-      canvas.drawLine(left, right, gridPaint);
+      canvas.drawCircle(p, r, handleFill);
+      canvas.drawCircle(p, r, handleStroke);
     }
 
-    // 4. Draw corner handles
-    final handlePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    final ringPaint = Paint()
-      ..color = ArchTheme.primary
-      ..strokeWidth = 3.5
-      ..style = PaintingStyle.stroke;
+    // 4. Draw 4 edge midpoint handles (pill / small rectangle)
+    final edgePaint = Paint()..color = Colors.white.withOpacity(0.9);
+    for (int i = 0; i < 4; i++) {
+      final mid = Offset(
+        (pts[i].dx + pts[(i + 1) % 4].dx) * 0.5,
+        (pts[i].dy + pts[(i + 1) % 4].dy) * 0.5,
+      );
+      final isSel = (activeTarget == 4 + i);
+      final r = isSel ? 6.0 : 4.5;
 
-    for (int i = 0; i < points.length; i++) {
-      final p = points[i];
-      final isCurrent = (i == activeIndex);
-      final radius = isCurrent ? 14.0 : 10.0;
-
-      canvas.drawCircle(p, radius, handlePaint);
-      canvas.drawCircle(p, radius, ringPaint);
+      canvas.drawCircle(mid, r, edgePaint);
+      canvas.drawCircle(mid, r, handleStroke);
     }
   }
 

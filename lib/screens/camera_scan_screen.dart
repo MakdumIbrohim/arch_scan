@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/theme/arch_theme.dart';
 import 'crop_screen.dart';
+import 'batch_process_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   final String? documentId;
@@ -63,11 +64,10 @@ class _CameraScanScreenState extends State<CameraScanScreen> {
   void _finishBatch() {
     if (_batchQueue.isEmpty) return;
 
-    final firstPath = _batchQueue.removeAt(0);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => CropScreen(
-          imagePath: firstPath,
+        builder: (_) => BatchProcessScreen(
+          imagePaths: List.from(_batchQueue),
           documentId: widget.documentId,
         ),
       ),

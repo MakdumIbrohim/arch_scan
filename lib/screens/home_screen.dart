@@ -13,6 +13,7 @@ import 'camera_scan_screen.dart';
 import 'crop_screen.dart';
 import 'document_detail_screen.dart';
 import 'id_card_scan_screen.dart';
+import 'batch_process_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,10 +52,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final pickedList = await _picker.pickMultiImage();
     if (pickedList.isEmpty || !mounted) return;
 
-    final firstPath = pickedList.first.path;
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CropScreen(imagePath: firstPath)),
-    );
+    if (pickedList.length > 1) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BatchProcessScreen(
+            imagePaths: pickedList.map((e) => e.path).toList(),
+          ),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CropScreen(imagePath: pickedList.first.path),
+        ),
+      );
+    }
     _refresh();
   }
 

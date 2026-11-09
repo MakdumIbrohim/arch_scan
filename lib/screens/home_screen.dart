@@ -206,8 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ? _buildBatchActionBar()
           : NavigationBar(
               selectedIndex: _currentTabIndex,
-              backgroundColor: ArchTheme.surface,
-              indicatorColor: ArchTheme.surfaceMuted,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              indicatorColor: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1F2937)
+                  : const Color(0xFFE2E8F0),
               onDestinationSelected: (idx) {
                 setState(() => _currentTabIndex = idx);
               },
@@ -262,28 +264,42 @@ class _HomeScreenState extends State<HomeScreen> {
       color: ArchTheme.textPrimary,
       onRefresh: _refresh,
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 90),
         children: [
           // 1. Search Bar
           TextField(
             decoration: InputDecoration(
               hintText: 'Cari dokumen...',
-              hintStyle: const TextStyle(color: ArchTheme.textSecondary, fontSize: 13),
-              prefixIcon: const Icon(Icons.search, color: ArchTheme.textSecondary, size: 20),
+              hintStyle: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? ArchTheme.darkTextSecondary
+                    : ArchTheme.lightTextSecondary,
+                fontSize: 13,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? ArchTheme.darkTextSecondary
+                    : ArchTheme.lightTextSecondary,
+                size: 20,
+              ),
               filled: true,
-              fillColor: ArchTheme.surface,
+              fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: ArchTheme.border),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: ArchTheme.border),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Colors.white),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 1.5,
+                ),
               ),
             ),
             onChanged: (val) => setState(() => _searchQuery = val),
@@ -402,9 +418,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: ArchTheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: ArchTheme.border, width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
@@ -428,10 +444,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 6),
                 Text(
                   a.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: ArchTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -732,12 +748,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDocumentsTab() {
     return Scaffold(
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
         children: [
           const Text('Semua Dokumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           ListTile(
-            leading: const Icon(Icons.folder, color: Colors.white),
+            leading: Icon(Icons.folder, color: Theme.of(context).colorScheme.primary),
             title: const Text('Folder Default'),
             subtitle: Text('${_documents.length} dokumen'),
           ),
@@ -770,7 +786,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
       children: [
         const Text('Pusat Alat Dokumen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
@@ -812,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
         const Text(
           'Pengaturan',
@@ -988,12 +1004,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSettingsSectionHeader(String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          color: ArchTheme.darkTextSecondary,
+        style: TextStyle(
+          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF475569),
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.8,
@@ -1004,17 +1021,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildThemeChip(String label, ThemeMode mode, ThemeService service) {
     final isSelected = service.themeMode == mode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final unselectedText =
+        isSelected ? Colors.white : (isDark ? const Color(0xFFF9FAFB) : const Color(0xFF0F172A));
+    final unselectedBorder =
+        isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
+    final unselectedBg =
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       selectedColor: service.accentColor,
+      backgroundColor: unselectedBg,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : ArchTheme.darkTextPrimary,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        color: unselectedText,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
         fontSize: 12,
       ),
       side: BorderSide(
-        color: isSelected ? service.accentColor : ArchTheme.darkBorder,
+        color: isSelected ? service.accentColor : unselectedBorder,
       ),
       onSelected: (_) => service.setThemeMode(mode),
     );

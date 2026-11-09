@@ -119,6 +119,23 @@ class ArchTheme {
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: darkSurface,
+        indicatorColor: darkSurfaceMuted,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+                color: accent, fontWeight: FontWeight.bold, fontSize: 12);
+          }
+          return const TextStyle(color: darkTextSecondary, fontSize: 12);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: accent);
+          }
+          return const IconThemeData(color: darkTextSecondary);
+        }),
+      ),
     );
   }
 
@@ -127,36 +144,36 @@ class ArchTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: lightBackground,
+      scaffoldBackgroundColor: const Color(0xFFF1F5F9), // Slate 100
       colorScheme: ColorScheme.light(
         primary: accent,
         secondary: cyan,
-        surface: lightSurface,
+        surface: Colors.white,
         error: red,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: lightSurface,
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: lightTextPrimary,
+          color: Color(0xFF0F172A),
           fontSize: 17,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
         ),
-        iconTheme: IconThemeData(color: lightTextPrimary, size: 20),
+        iconTheme: IconThemeData(color: Color(0xFF0F172A), size: 20),
       ),
       cardTheme: CardThemeData(
-        color: lightSurface,
+        color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: lightBorder, width: 1),
+          side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: lightBorder,
+        color: Color(0xFFE2E8F0),
         thickness: 1,
         space: 1,
       ),
@@ -182,6 +199,23 @@ class ArchTheme {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFE2E8F0),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+                color: accent, fontWeight: FontWeight.bold, fontSize: 12);
+          }
+          return const TextStyle(color: Color(0xFF64748B), fontSize: 12);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: accent);
+          }
+          return const IconThemeData(color: Color(0xFF64748B));
+        }),
       ),
     );
   }

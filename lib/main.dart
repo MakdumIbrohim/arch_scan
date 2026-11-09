@@ -12,11 +12,18 @@ class ArchScanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ArchScan',
-      debugShowCheckedModeBanner: false,
-      theme: ArchTheme.darkTheme,
-      home: const HomeScreen(),
+    return ListenableBuilder(
+      listenable: ThemeService.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'ArchScan',
+          debugShowCheckedModeBanner: false,
+          theme: ArchTheme.lightTheme,
+          darkTheme: ArchTheme.darkTheme,
+          themeMode: ThemeService.instance.themeMode,
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }

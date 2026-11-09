@@ -1,56 +1,105 @@
 import 'package:flutter/material.dart';
 
+class ThemeService extends ChangeNotifier {
+  static final ThemeService instance = ThemeService._();
+  ThemeService._();
+
+  ThemeMode _themeMode = ThemeMode.dark;
+  Color _accentColor = const Color(0xFF2563EB); // Arch Blue default
+
+  ThemeMode get themeMode => _themeMode;
+  Color get accentColor => _accentColor;
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
+
+  void setAccentColor(Color color) {
+    _accentColor = color;
+    notifyListeners();
+  }
+}
+
 class ArchTheme {
-  static const Color background = Color(0xFF09090B); // Zinc 950
-  static const Color surface = Color(0xFF18181B);    // Zinc 900
-  static const Color surfaceMuted = Color(0xFF27272A); // Zinc 800
-  static const Color border = Color(0xFF3F3F46);     // Zinc 700
-  static const Color textPrimary = Color(0xFFFAFAFA);
-  static const Color primary = textPrimary;
-  static const Color textSecondary = Color(0xFFA1A1AA);
-  static const Color accent = Color(0xFF38BDF8);     // Muted Sky
-  static const Color danger = Color(0xFFF87171);
+  // Slate / Navy Blue Dark palette
+  static const Color darkBackground = Color(0xFF090D16);
+  static const Color darkSurface = Color(0xFF111827);
+  static const Color darkSurfaceMuted = Color(0xFF1F2937);
+  static const Color darkBorder = Color(0xFF374151);
+  static const Color darkTextPrimary = Color(0xFFF9FAFB);
+  static const Color darkTextSecondary = Color(0xFF9CA3AF);
+
+  // Clean Light palette
+  static const Color lightBackground = Color(0xFFF8FAFC);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceMuted = Color(0xFFF1F5F9);
+  static const Color lightBorder = Color(0xFFE2E8F0);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF64748B);
+
+  // Feature icon colors (CamScanner style)
+  static const Color blue = Color(0xFF2563EB);
+  static const Color cyan = Color(0xFF0284C7);
+  static const Color teal = Color(0xFF0D9488);
+  static const Color amber = Color(0xFFD97706);
+  static const Color red = Color(0xFFDC2626);
+  static const Color purple = Color(0xFF7C3AED);
+  static const Color green = Color(0xFF16A34A);
+
+  // Static theme constants
+  static const Color primary = blue;
+  static const Color accent = blue;
+  static const Color background = darkBackground;
+  static const Color danger = red;
+  static const Color surface = darkSurface;
+  static const Color surfaceMuted = darkSurfaceMuted;
+  static const Color border = darkBorder;
+  static const Color textPrimary = darkTextPrimary;
+  static const Color textSecondary = darkTextSecondary;
 
   static ThemeData get darkTheme {
+    final accent = ThemeService.instance.accentColor;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: background,
-      colorScheme: const ColorScheme.dark(
-        primary: textPrimary,
-        secondary: accent,
-        surface: surface,
-        error: danger,
+      scaffoldBackgroundColor: darkBackground,
+      colorScheme: ColorScheme.dark(
+        primary: accent,
+        secondary: cyan,
+        surface: darkSurface,
+        error: red,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: surface,
+        backgroundColor: darkSurface,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: textPrimary,
-          fontSize: 16,
+          color: darkTextPrimary,
+          fontSize: 17,
           fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
         ),
-        iconTheme: IconThemeData(color: textPrimary, size: 20),
+        iconTheme: IconThemeData(color: darkTextPrimary, size: 20),
       ),
       cardTheme: CardThemeData(
-        color: surface,
+        color: darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: border, width: 1),
+          side: const BorderSide(color: darkBorder, width: 1),
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: border,
+        color: darkBorder,
         thickness: 1,
         space: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: textPrimary,
-          foregroundColor: background,
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -62,12 +111,76 @@ class ArchTheme {
           ),
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: textPrimary,
-        foregroundColor: background,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: Colors.white,
+        elevation: 3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData get lightTheme {
+    final accent = ThemeService.instance.accentColor;
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: lightBackground,
+      colorScheme: ColorScheme.light(
+        primary: accent,
+        secondary: cyan,
+        surface: lightSurface,
+        error: red,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: lightSurface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: lightTextPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+        iconTheme: IconThemeData(color: lightTextPrimary, size: 20),
+      ),
+      cardTheme: CardThemeData(
+        color: lightSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: lightBorder, width: 1),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: lightBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: Colors.white,
+        elevation: 3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
     );

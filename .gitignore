@@ -52,4 +52,6 @@ rust/target/
 *.so
 !android/app/src/main/jniLibs/**/*.so
 .arch_scan_data/
+.kotlin/
+android/.kotlin/
 

@@ -50,5 +50,6 @@ app.*.map.json
 # Rust build artifacts & test data
 rust/target/
 *.so
+!android/app/src/main/jniLibs/**/*.so
 .arch_scan_data/
 

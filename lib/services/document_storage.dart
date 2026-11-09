@@ -100,10 +100,15 @@ class DocumentStorageService {
     }
 
     final outPath = '${pdfDir.path}/${doc.id}.pdf';
-    final imagePaths = doc.pages.map((p) => p.processedImagePath).toList();
+    final pageSpecs = doc.pages
+        .map((p) => PageSpecData(
+              imagePath: p.processedImagePath,
+              ocrItems: p.ocrItems,
+            ))
+        .toList();
 
-    final success = ArchScanBridge.instance.generatePdf(
-      imagePaths: imagePaths,
+    final success = ArchScanBridge.instance.generateSearchablePdf(
+      pages: pageSpecs,
       outputPdfPath: outPath,
     );
 

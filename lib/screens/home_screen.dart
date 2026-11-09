@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/bridge/arch_scan_bridge.dart';
 import '../core/theme/arch_theme.dart';
 import '../models/document_model.dart';
@@ -49,6 +50,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     _refresh();
+  }
+
+  Future<void> _shareDocument(ScanDocument doc) async {
+    if (doc.pages.isEmpty) return;
+    String? pdfPath = doc.pdfPath;
+    if (pdfPath == null || !File(pdfPath).existsSync()) {
+      pdfPath = await DocumentStorageService.instance.generatePdfForDocument(doc);
+    }
+    if (pdfPath != null) {
+      await Share.shareXFiles(
+        [XFile(pdfPath)],
+        text: 'Document: ${doc.title} (Scanned with ArchScan)',
+      );
+    }
   }
 
   Future<void> _deleteDocument(ScanDocument doc) async {
@@ -284,9 +299,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                         onSelected: (val) {
                                           if (val == 'delete') {
                                             _deleteDocument(doc);
+                                          } else if (val == 'share') {
+                                            _shareDocument(doc);
                                           }
                                         },
                                         itemBuilder: (_) => [
+                                          const PopupMenuItem(
+                                            value: 'share',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.share,
+                                                    color: ArchTheme.accent,
+                                                    size: 20),
+                                                SizedBox(width: 8),
+                                                Text('Share PDF',
+                                                    style: TextStyle(
+                                                        color: ArchTheme.textPrimary)),
+                                              ],
+                                            ),
+                                          ),
                                           const PopupMenuItem(
                                             value: 'delete',
                                             child: Row(

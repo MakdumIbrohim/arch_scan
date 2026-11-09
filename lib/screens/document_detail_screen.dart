@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/theme/arch_theme.dart';
 import '../models/document_model.dart';
 import '../services/document_storage.dart';
@@ -161,6 +162,24 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     }
   }
 
+  Future<void> _shareDocument() async {
+    if (_document == null || _document!.pages.isEmpty) return;
+
+    String? pdfPath = _document!.pdfPath;
+    if (pdfPath == null || !File(pdfPath).existsSync()) {
+      setState(() => _isGeneratingPdf = true);
+      pdfPath = await DocumentStorageService.instance.generatePdfForDocument(_document!);
+      setState(() => _isGeneratingPdf = false);
+    }
+
+    if (pdfPath != null && mounted) {
+      await Share.shareXFiles(
+        [XFile(pdfPath)],
+        text: 'Document: ${_document!.title} (Scanned with ArchScan)',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -194,6 +213,11 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            onPressed: _isGeneratingPdf ? null : _shareDocument,
+            icon: const Icon(Icons.share, color: ArchTheme.accent),
+            tooltip: 'Share Document',
+          ),
           IconButton(
             onPressed: _isGeneratingPdf ? null : _exportPdf,
             icon: _isGeneratingPdf

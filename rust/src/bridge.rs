@@ -1,6 +1,6 @@
 use crate::detection::detect_document_corners;
 use crate::enhancement::{apply_filter, apply_rotation, FilterType};
-use crate::pdf::create_pdf_from_images;
+use crate::pdf::{create_pdf_from_images, create_searchable_pdf, PageSpec};
 use crate::perspective::{warp_perspective, Point};
 use image::GenericImageView;
 use std::ffi::CStr;
@@ -149,6 +149,38 @@ pub extern "C" fn arch_scan_generate_pdf(
     };
 
     match create_pdf_from_images(&paths, out_str.to_string()) {
+        Ok(_) => 0,
+        Err(_) => -3,
+    }
+}
+
+/// Generate Searchable PDF with OCR metadata:
+/// `pages_json` = `[{"image_path": "...", "ocr_items": [{"text": "...", "x": 0.1, "y": 0.8, "font_size": 12.0}]}]`
+#[no_mangle]
+pub extern "C" fn arch_scan_generate_searchable_pdf(
+    pages_json: *const c_char,
+    output_pdf_path: *const c_char,
+) -> i32 {
+    if pages_json.is_null() || output_pdf_path.is_null() {
+        return -1;
+    }
+
+    let json_str = match unsafe { CStr::from_ptr(pages_json) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let out_str = match unsafe { CStr::from_ptr(output_pdf_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let specs: Vec<PageSpec> = match serde_json::from_str(json_str) {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+
+    match create_searchable_pdf(&specs, out_str.to_string()) {
         Ok(_) => 0,
         Err(_) => -3,
     }

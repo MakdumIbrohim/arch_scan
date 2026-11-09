@@ -17,6 +17,9 @@ typedef ProcessPageDart = int Function(
 typedef GeneratePdfC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef GeneratePdfDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
 
+typedef GenerateSearchablePdfC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
+typedef GenerateSearchablePdfDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
+
 class Point2D {
   final double x;
   final double y;
@@ -46,6 +49,7 @@ class ArchScanBridge {
   late final DetectCornersDart _detectCornersFn;
   late final ProcessPageDart _processPageFn;
   late final GeneratePdfDart _generatePdfFn;
+  late final GenerateSearchablePdfDart _generateSearchablePdfFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -83,6 +87,8 @@ class ArchScanBridge {
           .lookupFunction<ProcessPageC, ProcessPageDart>('arch_scan_process_page');
       _generatePdfFn = _lib
           .lookupFunction<GeneratePdfC, GeneratePdfDart>('arch_scan_generate_pdf');
+      _generateSearchablePdfFn = _lib.lookupFunction<GenerateSearchablePdfC,
+          GenerateSearchablePdfDart>('arch_scan_generate_searchable_pdf');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -190,4 +196,72 @@ class ArchScanBridge {
       calloc.free(outPtr);
     }
   }
+
+  bool generateSearchablePdf({
+    required List<PageSpecData> pages,
+    required String outputPdfPath,
+  }) {
+    if (!_initialized) return false;
+
+    final jsonStr = jsonEncode(pages.map((p) => p.toJson()).toList());
+    final jsonPtr = jsonStr.toNativeUtf8();
+    final outPtr = outputPdfPath.toNativeUtf8();
+
+    try {
+      final res = _generateSearchablePdfFn(jsonPtr, outPtr);
+      return res == 0;
+    } catch (_) {
+      // Fallback to standard PDF
+      return generatePdf(
+        imagePaths: pages.map((p) => p.imagePath).toList(),
+        outputPdfPath: outputPdfPath,
+      );
+    } finally {
+      calloc.free(jsonPtr);
+      calloc.free(outPtr);
+    }
+  }
+}
+
+class OcrItem {
+  final String text;
+  final double x;
+  final double y;
+  final double fontSize;
+
+  const OcrItem({
+    required this.text,
+    required this.x,
+    required this.y,
+    this.fontSize = 12.0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'x': x,
+        'y': y,
+        'font_size': fontSize,
+      };
+
+  factory OcrItem.fromJson(Map<String, dynamic> json) => OcrItem(
+        text: json['text'] as String,
+        x: (json['x'] as num).toDouble(),
+        y: (json['y'] as num).toDouble(),
+        fontSize: (json['font_size'] as num?)?.toDouble() ?? 12.0,
+      );
+}
+
+class PageSpecData {
+  final String imagePath;
+  final List<OcrItem> ocrItems;
+
+  const PageSpecData({
+    required this.imagePath,
+    this.ocrItems = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+        'image_path': imagePath,
+        'ocr_items': ocrItems.map((e) => e.toJson()).toList(),
+      };
 }

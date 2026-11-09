@@ -7,6 +7,7 @@ class ScanPage {
   List<Point2D> corners;
   ScanFilter filter;
   int rotationDegrees;
+  List<OcrItem> ocrItems;
 
   ScanPage({
     required this.id,
@@ -15,6 +16,7 @@ class ScanPage {
     required this.corners,
     this.filter = ScanFilter.magicColor,
     this.rotationDegrees = 0,
+    this.ocrItems = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,6 +26,7 @@ class ScanPage {
         'corners': corners.map((p) => {'x': p.x, 'y': p.y}).toList(),
         'filter': filter.id,
         'rotationDegrees': rotationDegrees,
+        'ocrItems': ocrItems.map((e) => e.toJson()).toList(),
       };
 
   factory ScanPage.fromJson(Map<String, dynamic> json) => ScanPage(
@@ -38,6 +41,10 @@ class ScanPage {
           orElse: () => ScanFilter.magicColor,
         ),
         rotationDegrees: json['rotationDegrees'] as int? ?? 0,
+        ocrItems: (json['ocrItems'] as List?)
+                ?.map((e) => OcrItem.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
       );
 }
 

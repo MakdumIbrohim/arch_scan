@@ -2,10 +2,11 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../core/theme/arch_theme.dart';
+import '../widgets/signature_pad.dart';
 import 'crop_screen.dart';
 import 'batch_process_screen.dart';
 import 'id_card_scan_screen.dart';
+import 'qr_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   final String? documentId;
@@ -26,9 +27,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
   final ImagePicker _picker = ImagePicker();
   final List<String> _batchQueue = [];
-  bool _isBatchMode = false;
-  bool _flashOn = false;
+  bool _isBatchMode = true; // Default: 'Beberapa Halaman' as in CamScanner reference
+  FlashMode _flashMode = FlashMode.off;
   bool _isTakingPicture = false;
+  bool _autoEnhance = true;
+  ResolutionPreset _currentResolution = ResolutionPreset.veryHigh;
+  String _activeMode = 'Scan'; // 'Kode QR', 'Tanda tangani', 'Scan', 'Hapus Cerdas', 'Kartu ID'
 
   @override
   void initState() {
@@ -59,7 +63,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   }
 
   Future<void> _initCameraWithPermission() async {
-    // 1. Explicitly check & request Camera permission
     final status = await Permission.camera.request();
     if (status.isDenied || status.isPermanentlyDenied) {
       if (mounted) {
@@ -71,7 +74,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       return;
     }
 
-    // 2. Discover available cameras on device
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
@@ -101,7 +103,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   Future<void> _initCameraController(CameraDescription description) async {
     final controller = CameraController(
       description,
-      ResolutionPreset.veryHigh,
+      _currentResolution,
       enableAudio: false,
     );
 
@@ -109,7 +111,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
     try {
       await controller.initialize();
-      await controller.setFlashMode(FlashMode.off);
+      await controller.setFlashMode(_flashMode);
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
@@ -126,17 +128,33 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     }
   }
 
-  Future<void> _toggleFlash() async {
+  Future<void> _cycleFlashMode() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
     try {
-      final nextState = !_flashOn;
-      await _controller!.setFlashMode(
-        nextState ? FlashMode.torch : FlashMode.off,
-      );
+      FlashMode next;
+      switch (_flashMode) {
+        case FlashMode.off:
+          next = FlashMode.torch;
+          break;
+        case FlashMode.torch:
+          next = FlashMode.auto;
+          break;
+        case FlashMode.auto:
+          next = FlashMode.always;
+          break;
+        default:
+          next = FlashMode.off;
+          break;
+      }
+      await _controller!.setFlashMode(next);
       if (mounted) {
-        setState(() {
-          _flashOn = nextState;
-        });
+        setState(() => _flashMode = next);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Flash: ${next.name.toUpperCase()}'),
+            duration: const Duration(milliseconds: 700),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -145,6 +163,103 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         );
       }
     }
+  }
+
+  Future<void> _cycleResolution() async {
+    if (_controller == null) return;
+    ResolutionPreset next;
+    String label;
+    if (_currentResolution == ResolutionPreset.veryHigh ||
+        _currentResolution == ResolutionPreset.max) {
+      next = ResolutionPreset.high;
+      label = 'HD (Standard)';
+    } else {
+      next = ResolutionPreset.veryHigh;
+      label = 'HD+ (Ultra Clear)';
+    }
+
+    setState(() => _currentResolution = next);
+    await _initCameraController(_controller!.description);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Resolusi Kamera: $label'),
+          duration: const Duration(milliseconds: 700),
+        ),
+      );
+    }
+  }
+
+  void _showCameraSettingsMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF18181B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Pengaturan Kamera',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Icon(
+                  _autoEnhance ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+                  color: const Color(0xFF10B981),
+                ),
+                title: const Text('Penyempurnaan Otomatis (Magic Color)',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                trailing: Switch(
+                  value: _autoEnhance,
+                  activeThumbColor: const Color(0xFF10B981),
+                  onChanged: (val) {
+                    setState(() => _autoEnhance = val);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.hd_outlined, color: Colors.white70),
+                title: const Text('Kualitas Bidik',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text(
+                  _currentResolution == ResolutionPreset.veryHigh
+                      ? 'Ultra High'
+                      : 'High',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _cycleResolution();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.refresh, color: Colors.white70),
+                title: const Text('Reset Pengaturan Kamera',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                onTap: () {
+                  setState(() {
+                    _autoEnhance = true;
+                    _currentResolution = ResolutionPreset.veryHigh;
+                  });
+                  Navigator.pop(ctx);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _captureImage() async {
@@ -167,7 +282,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         if (mounted) setState(() => _isTakingPicture = false);
       }
     } else {
-      // Fallback for emulator / desktop
       final picked = await _picker.pickImage(source: ImageSource.camera);
       capturedPath = picked?.path;
     }
@@ -179,8 +293,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
         _batchQueue.add(capturedPath!);
       });
     } else {
-      // Turn off torch when navigating to crop
-      if (_flashOn && _controller != null) {
+      if (_flashMode == FlashMode.torch && _controller != null) {
         try {
           await _controller!.setFlashMode(FlashMode.off);
         } catch (_) {}
@@ -207,7 +320,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     } else {
       final picked = await _picker.pickImage(source: ImageSource.gallery);
       if (picked == null || !mounted) return;
-      if (_flashOn && _controller != null) {
+      if (_flashMode == FlashMode.torch && _controller != null) {
         try {
           await _controller!.setFlashMode(FlashMode.off);
         } catch (_) {}
@@ -224,9 +337,13 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     }
   }
 
+  Future<void> _importDocumentFiles() async {
+    await _pickFromGallery();
+  }
+
   void _finishBatch() {
     if (_batchQueue.isEmpty) return;
-    if (_flashOn && _controller != null) {
+    if (_flashMode == FlashMode.torch && _controller != null) {
       try {
         _controller!.setFlashMode(FlashMode.off);
       } catch (_) {}
@@ -242,56 +359,192 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          _isBatchMode ? 'Batch Scanner' : 'Document Scanner',
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _flashOn ? Icons.flash_on : Icons.flash_off,
-              color: _flashOn ? Colors.amber : Colors.white,
-            ),
-            tooltip: 'Flashlight (Senter)',
-            onPressed: _toggleFlash,
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _isBatchMode = !_isBatchMode;
-                _batchQueue.clear();
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: _isBatchMode ? ArchTheme.primary : Colors.white24,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _isBatchMode ? 'BATCH' : 'SINGLE',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
+  void _showAllFeaturesModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF18181B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
+              const Text(
+                'Semua Fitur Pindai',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                crossAxisCount: 4,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 12,
+                children: [
+                  _buildFeatureIcon(
+                    icon: Icons.document_scanner,
+                    label: 'Scan Dokumen',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      setState(() => _activeMode = 'Scan');
+                    },
+                  ),
+                  _buildFeatureIcon(
+                    icon: Icons.qr_code_scanner,
+                    label: 'Kode QR',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const QrScannerScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureIcon(
+                    icon: Icons.credit_card,
+                    label: 'Kartu ID',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const IdCardScanScreen()),
+                      );
+                    },
+                  ),
+                  _buildFeatureIcon(
+                    icon: Icons.draw_outlined,
+                    label: 'Tanda Tangan',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const SignaturePadModal(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureIcon({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFF27272A),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon, color: const Color(0xFF10B981), size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
+    );
+  }
+
+  void _onModeSelected(String mode) {
+    if (mode == _activeMode) return;
+    setState(() => _activeMode = mode);
+
+    if (mode == 'Kode QR') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+      ).then((_) {
+        if (mounted) setState(() => _activeMode = 'Scan');
+      });
+    } else if (mode == 'Kartu ID') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const IdCardScanScreen()),
+      ).then((_) {
+        if (mounted) setState(() => _activeMode = 'Scan');
+      });
+    } else if (mode == 'Tanda tangani') {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const SignaturePadModal(),
+      ).then((_) {
+        if (mounted) setState(() => _activeMode = 'Scan');
+      });
+    } else if (mode == 'Hapus Cerdas') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mode Hapus Cerdas: Siap membersihkan dokumen otomatis.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  IconData _getFlashIcon() {
+    switch (_flashMode) {
+      case FlashMode.torch:
+        return Icons.flash_on;
+      case FlashMode.auto:
+        return Icons.flash_auto;
+      case FlashMode.always:
+        return Icons.flashlight_on;
+      default:
+        return Icons.flash_off;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const tealAccent = Color(0xFF10B981);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Live hardware camera preview (if initialized)
+          // 1. Live hardware camera preview (polos tanpa garis reticle seperti di CamScanner asli)
           if (_isCameraInitialized && _controller != null)
             Positioned.fill(
               child: ClipRect(
@@ -309,7 +562,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               ),
             )
           else if (_permissionDenied)
-            // Permission request UI card
             Center(
               child: Container(
                 margin: const EdgeInsets.all(24),
@@ -325,7 +577,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                     const Icon(
                       Icons.camera_alt_outlined,
                       size: 54,
-                      color: ArchTheme.primary,
+                      color: tealAccent,
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -356,6 +608,10 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                           await openAppSettings();
                         }
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: tealAccent,
+                        foregroundColor: Colors.white,
+                      ),
                       icon: const Icon(Icons.settings),
                       label: const Text('Beri Izin Kamera'),
                     ),
@@ -364,7 +620,6 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               ),
             )
           else
-            // Fallback / Loading camera state
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -378,7 +633,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                       child: Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style:
+                            const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -388,7 +644,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                       label: const Text('Pilih dari Galeri'),
                     ),
                   ] else ...[
-                    const CircularProgressIndicator(color: ArchTheme.primary),
+                    const CircularProgressIndicator(color: tealAccent),
                     const SizedBox(height: 16),
                     const Text(
                       'Membuka kamera hardware...',
@@ -399,148 +655,378 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               ),
             ),
 
-          // 2. Viewfinder Reticle Overlay
-          Center(
-            child: CustomPaint(
-              size: const Size(280, 390),
-              painter: _MinimalViewfinderPainter(),
-            ),
-          ),
-
-          // 3. Document framing guidance message
+          // 2. Header Atas: [X]  [Flash]  [Auto-Enhance]  [HD]  [Menu 3-titik]
           Positioned(
-            top: 16,
+            top: 0,
             left: 0,
             right: 0,
-            child: Center(
+            child: SafeArea(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _isBatchMode
-                      ? 'Mode Batch: ${_batchQueue.length} halaman terambil'
-                      : 'Posisikan dokumen di dalam garis retikel',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
                   ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Close button (X)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 26),
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Tutup',
+                    ),
+
+                    // Right control group: Flash, Enhance, HD, Menu
+                    Row(
+                      children: [
+                        // Flash mode cycle
+                        IconButton(
+                          icon: Icon(
+                            _getFlashIcon(),
+                            color: _flashMode == FlashMode.off
+                                ? Colors.white
+                                : Colors.amber,
+                            size: 22,
+                          ),
+                          tooltip: 'Lampu Kilat',
+                          onPressed: _cycleFlashMode,
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Auto-enhance filter toggle
+                        IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: _autoEnhance ? tealAccent : Colors.white60,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.auto_fix_high,
+                              color: _autoEnhance ? tealAccent : Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                          tooltip: 'Penyempurnaan Otomatis',
+                          onPressed: () {
+                            setState(() => _autoEnhance = !_autoEnhance);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_autoEnhance
+                                    ? 'Penyempurnaan Otomatis: AKTIF'
+                                    : 'Penyempurnaan Otomatis: NONAKTIF'),
+                                duration: const Duration(milliseconds: 700),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+
+                        // HD resolution badge button
+                        GestureDetector(
+                          onTap: _cycleResolution,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.white70, width: 1.2),
+                            ),
+                            child: const Text(
+                              'HD',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // 3-dot overflow menu
+                        IconButton(
+                          icon: const Icon(Icons.more_vert,
+                              color: Colors.white, size: 24),
+                          tooltip: 'Pengaturan Lanjutan',
+                          onPressed: _showCameraSettingsMenu,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // 4. Mode Selector Bar (Dokumen / Batch / Kartu ID)
+          // 3. Floating Pill Selector: [ Satu Halaman | Beberapa Halaman ]
           Positioned(
-            bottom: 115,
+            bottom: 155,
             left: 0,
             right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildModeChoice('Dokumen', !_isBatchMode, () {
-                  setState(() => _isBatchMode = false);
-                }),
-                const SizedBox(width: 20),
-                _buildModeChoice('Batch', _isBatchMode, () {
-                  setState(() => _isBatchMode = true);
-                }),
-                const SizedBox(width: 20),
-                _buildModeChoice('Kartu ID', false, () {
-                  if (_flashOn && _controller != null) {
-                    try {
-                      _controller!.setFlashMode(FlashMode.off);
-                    } catch (_) {}
-                  }
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const IdCardScanScreen()),
-                  );
-                }),
-              ],
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC18181B), // Translucent dark
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white12, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildPillOption(
+                      label: 'Satu Halaman',
+                      isSelected: !_isBatchMode,
+                      onTap: () {
+                        setState(() {
+                          _isBatchMode = false;
+                          _batchQueue.clear();
+                        });
+                      },
+                    ),
+                    _buildPillOption(
+                      label: 'Beberapa Halaman',
+                      isSelected: _isBatchMode,
+                      onTap: () {
+                        setState(() => _isBatchMode = true);
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
 
-          // 5. Bottom Controls
+          // 4. Horizontal Feature Carousel Bar: [ Kode QR | Tanda tangani | Scan | Hapus Cerdas | Kartu ID ]
           Positioned(
-            bottom: 28,
-            left: 24,
-            right: 24,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Gallery button
-                IconButton(
-                  onPressed: _pickFromGallery,
-                  icon: const Icon(Icons.photo_library_outlined,
-                      color: Colors.white, size: 28),
-                  tooltip: 'Galeri',
+            bottom: 102,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 38,
+              alignment: Alignment.center,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildCarouselItem(
+                      label: 'Kode QR',
+                      hasBadge: true,
+                      isSelected: _activeMode == 'Kode QR',
+                      onTap: () => _onModeSelected('Kode QR'),
+                    ),
+                    const SizedBox(width: 24),
+                    _buildCarouselItem(
+                      label: 'Tanda tangani',
+                      hasBadge: true,
+                      isSelected: _activeMode == 'Tanda tangani',
+                      onTap: () => _onModeSelected('Tanda tangani'),
+                    ),
+                    const SizedBox(width: 24),
+                    _buildCarouselItem(
+                      label: 'Scan',
+                      hasBadge: false,
+                      isSelected: _activeMode == 'Scan',
+                      onTap: () => _onModeSelected('Scan'),
+                    ),
+                    const SizedBox(width: 24),
+                    _buildCarouselItem(
+                      label: 'Hapus Cerdas',
+                      hasBadge: false,
+                      isSelected: _activeMode == 'Hapus Cerdas',
+                      onTap: () => _onModeSelected('Hapus Cerdas'),
+                    ),
+                    const SizedBox(width: 24),
+                    _buildCarouselItem(
+                      label: 'Kartu ID',
+                      hasBadge: false,
+                      isSelected: _activeMode == 'Kartu ID',
+                      onTap: () => _onModeSelected('Kartu ID'),
+                    ),
+                  ],
                 ),
+              ),
+            ),
+          ),
 
-                // Shutter button (clean double circle)
-                GestureDetector(
-                  onTap: _isTakingPicture ? null : _captureImage,
-                  child: Container(
-                    width: 74,
-                    height: 74,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2.5),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _isTakingPicture ? Colors.grey : Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: _isTakingPicture
-                          ? const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            )
-                          : null,
-                    ),
+          // 5. Bottom Shutter Bar: [Semua Fitur]  ( SHUTTER )  [Impor Gambar]  [Impor File]
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              top: false,
+              child: Container(
+                height: 96,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black87, Colors.transparent],
                   ),
                 ),
-
-                // Batch finish button or empty spacer
-                _isBatchMode && _batchQueue.isNotEmpty
-                    ? GestureDetector(
-                        onTap: _finishBatch,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: ArchTheme.primary,
-                            borderRadius: BorderRadius.circular(8),
-                            border:
-                                Border.all(color: Colors.white, width: 1.5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${_batchQueue.length}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Kiri: Semua Fitur (Grid 9-dots)
+                    GestureDetector(
+                      onTap: _showAllFeaturesModal,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.apps, color: Colors.white, size: 26),
+                          SizedBox(height: 4),
+                          Text(
+                            'Semua Fitur',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+
+                    // Tengah: Shutter Button dengan Ring Hijau Toska
+                    GestureDetector(
+                      onTap: _isTakingPicture ? null : _captureImage,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: tealAccent,
+                            width: 3.5,
+                          ),
                         ),
-                      )
-                    : const SizedBox(width: 48),
-              ],
+                        padding: const EdgeInsets.all(4),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _isTakingPicture
+                                ? Colors.grey
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: _isTakingPicture
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+
+                    // Kanan: Impor Gambar & Impor File (atau Tombol Selesai Batch jika ada antrean)
+                    _isBatchMode && _batchQueue.isNotEmpty
+                        ? GestureDetector(
+                            onTap: _finishBatch,
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: tealAccent,
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${_batchQueue.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Selesai',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Row(
+                            children: [
+                              // Impor Gambar
+                              GestureDetector(
+                                onTap: _pickFromGallery,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.photo_outlined,
+                                          color: Colors.white, size: 24),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Impor Gambar',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Impor File
+                              GestureDetector(
+                                onTap: _importDocumentFiles,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.description_outlined,
+                                          color: Colors.white, size: 24),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Impor File',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -548,61 +1034,81 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     );
   }
 
-  Widget _buildModeChoice(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildPillOption({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white24 : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          color: isSelected ? const Color(0xFF3F3F46) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white60,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            fontSize: 13,
-            letterSpacing: 0.5,
+            color: isSelected ? Colors.white : Colors.white54,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 12,
           ),
         ),
       ),
     );
   }
-}
 
-class _MinimalViewfinderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
+  Widget _buildCarouselItem({
+    required String label,
+    required bool hasBadge,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    const teal = Color(0xFF10B981);
 
-    final boxPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), boxPaint);
-
-    final cornerPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-
-    const len = 24.0;
-    // Top-Left
-    canvas.drawLine(const Offset(0, len), const Offset(0, 0), cornerPaint);
-    canvas.drawLine(const Offset(0, 0), const Offset(len, 0), cornerPaint);
-    // Top-Right
-    canvas.drawLine(Offset(w - len, 0), Offset(w, 0), cornerPaint);
-    canvas.drawLine(Offset(w, 0), Offset(w, len), cornerPaint);
-    // Bottom-Right
-    canvas.drawLine(Offset(w, h - len), Offset(w, h), cornerPaint);
-    canvas.drawLine(Offset(w, h), Offset(w - len, h), cornerPaint);
-    // Bottom-Left
-    canvas.drawLine(Offset(len, h), Offset(0, h), cornerPaint);
-    canvas.drawLine(Offset(0, h), Offset(0, h - len), cornerPaint);
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? teal : Colors.white70,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              if (hasBadge) ...[
+                const SizedBox(width: 2),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444), // Red notification dot
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Teal active indicator bar
+          Container(
+            width: isSelected ? 16 : 0,
+            height: 2.5,
+            decoration: BoxDecoration(
+              color: isSelected ? teal : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _MinimalViewfinderPainter oldDelegate) => false;
 }

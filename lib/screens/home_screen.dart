@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: ArchTheme.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('Delete Selected'),
         content: Text('Delete ${_selectedDocIds.length} document(s)?'),
         actions: [
@@ -698,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBatchActionBar() {
     return Container(
-      color: ArchTheme.surface,
+      color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SafeArea(
         child: Row(

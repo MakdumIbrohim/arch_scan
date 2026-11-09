@@ -65,25 +65,28 @@ class _CropScreenState extends State<CropScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Adjust Boundary'),
         actions: [
           TextButton.icon(
             onPressed: _resetToFull,
-            icon: const Icon(Icons.fullscreen, color: Colors.white70, size: 20),
-            label: const Text('Full', style: TextStyle(color: Colors.white70)),
+            icon: Icon(Icons.fullscreen, color: isDark ? Colors.white70 : const Color(0xFF475569), size: 20),
+            label: Text('Full', style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF475569))),
           ),
           IconButton(
             onPressed: _detectCorners,
-            icon: const Icon(Icons.auto_fix_high, color: Colors.white),
+            icon: Icon(Icons.auto_fix_high, color: theme.colorScheme.primary),
             tooltip: 'Auto Detect',
           ),
         ],
       ),
       body: _isDetecting
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
+          ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
           : Column(
               children: [
                 Expanded(
@@ -101,14 +104,17 @@ class _CropScreenState extends State<CropScreen> {
                   ),
                 ),
                 Container(
-                  color: ArchTheme.surface,
+                  color: theme.colorScheme.surface,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Drag handles to align document corners',
-                        style: TextStyle(color: ArchTheme.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                          color: isDark ? ArchTheme.darkTextSecondary : ArchTheme.lightTextSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       ElevatedButton.icon(
                         onPressed: _proceedToFilter,

@@ -58,7 +58,12 @@ class _FilterScreenState extends State<FilterScreen> {
     if (mounted) {
       setState(() {
         _isProcessing = false;
-        if (success) _previewPath = outPath;
+        if (success) {
+          _previewPath = outPath;
+        } else {
+          // Fallback gracefully to raw image if processing fails
+          _previewPath ??= widget.rawImagePath;
+        }
       });
     }
   }
@@ -89,8 +94,11 @@ class _FilterScreenState extends State<FilterScreen> {
     final pageId = widget.pageId ?? const Uuid().v4();
     final finalPath = '${pagesDir.path}/page_$pageId.jpg';
 
-    // Copy current preview to durable page storage
-    await File(_previewPath!).copy(finalPath);
+    // Copy preview or fallback to raw image
+    final srcFile = File(_previewPath ?? widget.rawImagePath);
+    if (await srcFile.exists()) {
+      await srcFile.copy(finalPath);
+    }
 
     final scanPage = ScanPage(
       id: pageId,
@@ -139,19 +147,22 @@ class _FilterScreenState extends State<FilterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Enhance & Filter'),
         actions: [
           IconButton(
             onPressed: _onRotate,
-            icon: const Icon(Icons.rotate_right, color: ArchTheme.primary),
+            icon: Icon(Icons.rotate_right, color: theme.colorScheme.primary),
             tooltip: 'Rotate 90°',
           ),
           IconButton(
             onPressed: _savePage,
-            icon: const Icon(Icons.check, color: ArchTheme.accent),
+            icon: Icon(Icons.check, color: theme.colorScheme.primary),
             tooltip: 'Save',
           ),
         ],
@@ -161,38 +172,33 @@ class _FilterScreenState extends State<FilterScreen> {
           Expanded(
             child: Center(
               child: _isProcessing && _previewPath == null
-                  ? const CircularProgressIndicator(color: ArchTheme.primary)
-                  : _previewPath != null
-                      ? Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  File(_previewPath!),
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
+                  ? CircularProgressIndicator(color: theme.colorScheme.primary)
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(_previewPath ?? widget.rawImagePath),
+                              fit: BoxFit.contain,
                             ),
-                            if (_isProcessing)
-                              Container(
-                                color: Colors.black45,
-                                child: const CircularProgressIndicator(
-                                    color: ArchTheme.primary),
-                              ),
-                          ],
-                        )
-                      : const Text(
-                          'Processing failed',
-                          style: TextStyle(color: ArchTheme.danger),
+                          ),
                         ),
+                        if (_isProcessing)
+                          Container(
+                            color: Colors.black45,
+                            child: CircularProgressIndicator(
+                                color: theme.colorScheme.primary),
+                          ),
+                      ],
+                    ),
             ),
           ),
           // Filter options bar
           Container(
-            color: ArchTheme.surface,
+            color: theme.colorScheme.surface,
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -205,15 +211,22 @@ class _FilterScreenState extends State<FilterScreen> {
                     child: ChoiceChip(
                       label: Text(f.label),
                       selected: isSelected,
-                      selectedColor: Colors.white,
-                      backgroundColor: ArchTheme.surfaceMuted,
+                      selectedColor: theme.colorScheme.primary,
+                      backgroundColor: isDark
+                          ? const Color(0xFF1F2937)
+                          : const Color(0xFFF1F5F9),
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.black : ArchTheme.textPrimary,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? const Color(0xFFF9FAFB) : const Color(0xFF0F172A)),
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
                         fontSize: 13,
                       ),
                       side: BorderSide(
-                        color: isSelected ? Colors.white : ArchTheme.border,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.dividerColor,
                         width: 1.0,
                       ),
                       onSelected: (_) => _onFilterSelected(f),

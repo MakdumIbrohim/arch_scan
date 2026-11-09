@@ -100,20 +100,24 @@ class _IdCardScanScreenState extends State<IdCardScanScreen> {
     final readyToStitch = _frontPath != null && _backPath != null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
         title: const Text('2-Sided ID Card Scan'),
       ),
       body: _isProcessing
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     'Place both sides of ID card inside the frames below',
-                    style: TextStyle(color: ArchTheme.textSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? ArchTheme.darkTextSecondary
+                          : ArchTheme.lightTextSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   // Front Card Slot
@@ -158,10 +162,12 @@ class _IdCardScanScreenState extends State<IdCardScanScreen> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: ArchTheme.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: path != null ? Colors.white : ArchTheme.border,
+            color: path != null
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
             width: path != null ? 1.5 : 1.0,
           ),
         ),

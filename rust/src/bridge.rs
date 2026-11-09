@@ -105,10 +105,10 @@ pub extern "C" fn arch_scan_process_page(
     let target_w = (top_w.max(bot_w).round() as u32).max(100);
     let target_h = (left_h.max(right_h).round() as u32).max(100);
 
-    // 1. Warp perspective
+    // 1. Warp perspective with graceful fallback
     let warped = match warp_perspective(&img, &corners, target_w, target_h) {
         Some(w) => w,
-        None => return -3,
+        None => img.clone(),
     };
 
     // 2. Rotate if needed

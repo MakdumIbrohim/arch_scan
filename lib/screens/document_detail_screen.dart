@@ -63,7 +63,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     final newTitle = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: ArchTheme.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('Rename Document'),
         content: TextField(
           controller: controller,
@@ -105,7 +105,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
 
     final config = await showModalBottomSheet<PdfSettings>(
       context: context,
-      backgroundColor: ArchTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -209,7 +209,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: ArchTheme.surface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: const Row(
             children: [
               Icon(Icons.picture_as_pdf, color: ArchTheme.accent),
@@ -305,7 +305,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: ArchTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),

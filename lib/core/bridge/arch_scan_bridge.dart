@@ -77,11 +77,14 @@ class ArchScanBridge {
       if (Platform.isAndroid) {
         _lib = DynamicLibrary.open('libarch_scan_core.so');
       } else if (Platform.isLinux) {
-        // Try local directories
+        final exeDir = File(Platform.resolvedExecutable).parent.path;
         final candidates = [
-          './libarch_scan_core.so',
-          './rust/target/release/libarch_scan_core.so',
+          '$exeDir/lib/libarch_scan_core.so',
+          '$exeDir/libarch_scan_core.so',
+          '/home/makdumibrohim/Projects/Mobile-Dev/flutter-projects/arch_scan/build/linux/x64/debug/bundle/lib/libarch_scan_core.so',
           '/home/makdumibrohim/Projects/Mobile-Dev/flutter-projects/arch_scan/libarch_scan_core.so',
+          '/home/makdumibrohim/Projects/Mobile-Dev/flutter-projects/arch_scan/rust/target/release/libarch_scan_core.so',
+          './libarch_scan_core.so',
           'libarch_scan_core.so',
         ];
         DynamicLibrary? loaded;

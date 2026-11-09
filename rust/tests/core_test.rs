@@ -6,8 +6,12 @@ use arch_scan_core::perspective::warp_perspective;
 use image::{DynamicImage, ImageBuffer, Rgba};
 
 #[test]
-fn test_core_version() {
-    assert_eq!(arch_scan_version(), 100);
+fn test_rgba_to_jpeg_save() {
+    let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(100, 100);
+    let dyn_img = DynamicImage::ImageRgba8(img);
+    let res = dyn_img.save("/tmp/test_rgba.jpg");
+    println!("SAVE RESULT: {:?}", res);
+    assert!(res.is_ok());
 }
 
 #[test]

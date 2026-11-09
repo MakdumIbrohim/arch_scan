@@ -6,6 +6,7 @@ import '../core/theme/arch_theme.dart';
 import '../models/document_model.dart';
 import '../services/document_storage.dart';
 import 'crop_screen.dart';
+import 'camera_scan_screen.dart';
 
 class DocumentDetailScreen extends StatefulWidget {
   final String documentId;
@@ -299,36 +300,14 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: ArchTheme.surface,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (ctx) => SafeArea(
-              child: Wrap(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.camera_alt, color: ArchTheme.primary),
-                    title: const Text('Capture with Camera'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _addPage(ImageSource.camera);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.photo_library, color: ArchTheme.accent),
-                    title: const Text('Import from Gallery'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _addPage(ImageSource.gallery);
-                    },
-                  ),
-                ],
-              ),
+        onPressed: () async {
+          if (_document == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CameraScanScreen(documentId: _document!.id),
             ),
           );
+          _loadDocument();
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Page'),

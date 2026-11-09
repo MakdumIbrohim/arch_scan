@@ -8,6 +8,7 @@ import '../core/theme/arch_theme.dart';
 import '../models/document_model.dart';
 import '../services/document_storage.dart';
 import 'crop_screen.dart';
+import 'camera_scan_screen.dart';
 import 'document_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -346,36 +347,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: ArchTheme.surface,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (ctx) => SafeArea(
-              child: Wrap(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.camera_alt, color: ArchTheme.primary),
-                    title: const Text('Scan with Camera'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _startScan(ImageSource.camera);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.photo_library, color: ArchTheme.accent),
-                    title: const Text('Import from Gallery'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _startScan(ImageSource.gallery);
-                    },
-                  ),
-                ],
-              ),
-            ),
+        onPressed: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CameraScanScreen()),
           );
+          _refresh();
         },
         icon: const Icon(Icons.camera_alt),
         label: const Text('Scan Document'),

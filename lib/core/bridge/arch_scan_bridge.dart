@@ -25,6 +25,11 @@ typedef GenerateConfiguredPdfC = Int32 Function(
 typedef GenerateConfiguredPdfDart = int Function(
     Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
 
+typedef StitchIdCardC = Int32 Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+typedef StitchIdCardDart = int Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+
 class Point2D {
   final double x;
   final double y;
@@ -56,6 +61,7 @@ class ArchScanBridge {
   late final GeneratePdfDart _generatePdfFn;
   late final GenerateSearchablePdfDart _generateSearchablePdfFn;
   late final GenerateConfiguredPdfDart _generateConfiguredPdfFn;
+  late final StitchIdCardDart _stitchIdCardFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -97,6 +103,8 @@ class ArchScanBridge {
           GenerateSearchablePdfDart>('arch_scan_generate_searchable_pdf');
       _generateConfiguredPdfFn = _lib.lookupFunction<GenerateConfiguredPdfC,
           GenerateConfiguredPdfDart>('arch_scan_generate_pdf_configured');
+      _stitchIdCardFn = _lib.lookupFunction<StitchIdCardC,
+          StitchIdCardDart>('arch_scan_stitch_id_card');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -255,6 +263,27 @@ class ArchScanBridge {
     } finally {
       calloc.free(pagesPtr);
       calloc.free(configPtr);
+      calloc.free(outPtr);
+    }
+  }
+
+  bool stitchIdCard({
+    required String frontPath,
+    required String backPath,
+    required String outputPath,
+  }) {
+    if (!_initialized) return false;
+
+    final fPtr = frontPath.toNativeUtf8();
+    final bPtr = backPath.toNativeUtf8();
+    final outPtr = outputPath.toNativeUtf8();
+
+    try {
+      final res = _stitchIdCardFn(fPtr, bPtr, outPtr);
+      return res == 0;
+    } finally {
+      calloc.free(fPtr);
+      calloc.free(bPtr);
       calloc.free(outPtr);
     }
   }

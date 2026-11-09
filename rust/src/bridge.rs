@@ -231,3 +231,43 @@ pub extern "C" fn arch_scan_generate_pdf_configured(
         Err(_) => -3,
     }
 }
+
+/// Stitch 2-sided ID Card (Front and Back images) into one composite image
+#[no_mangle]
+pub extern "C" fn arch_scan_stitch_id_card(
+    front_path: *const c_char,
+    back_path: *const c_char,
+    output_path: *const c_char,
+) -> i32 {
+    if front_path.is_null() || back_path.is_null() || output_path.is_null() {
+        return -1;
+    }
+    let f_str = match unsafe { CStr::from_ptr(front_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let b_str = match unsafe { CStr::from_ptr(back_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let out_str = match unsafe { CStr::from_ptr(output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let front = match image::open(f_str) {
+        Ok(i) => i,
+        Err(_) => return -2,
+    };
+    let back = match image::open(b_str) {
+        Ok(i) => i,
+        Err(_) => return -2,
+    };
+
+    let composite = crate::enhancement::stitch_id_card(&front, &back);
+    if composite.save(out_str).is_err() {
+        return -3;
+    }
+
+    0
+}

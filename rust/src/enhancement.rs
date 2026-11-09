@@ -206,3 +206,41 @@ fn apply_sharp(img: &DynamicImage) -> DynamicImage {
 
     DynamicImage::ImageRgba8(out)
 }
+
+/// Stitch 2-sided ID Card (Front and Back) onto a single vertical A4 document sheet
+pub fn stitch_id_card(front: &DynamicImage, back: &DynamicImage) -> DynamicImage {
+    let a4_w = 1200u32;
+    let a4_h = 1700u32;
+    let mut canvas: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_pixel(a4_w, a4_h, Rgba([255, 255, 255, 255]));
+
+    let target_card_w = 900u32;
+    let front_aspect = front.width() as f32 / front.height() as f32;
+    let target_card_h1 = (target_card_w as f32 / front_aspect).round() as u32;
+
+    let front_resized = front.resize_exact(
+        target_card_w,
+        target_card_h1,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    let back_aspect = back.width() as f32 / back.height() as f32;
+    let target_card_h2 = (target_card_w as f32 / back_aspect).round() as u32;
+    let back_resized = back.resize_exact(
+        target_card_w,
+        target_card_h2,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    // Place Front in top half
+    let ox1 = (a4_w - target_card_w) / 2;
+    let oy1 = (a4_h / 2 - target_card_h1) / 2;
+    image::imageops::overlay(&mut canvas, &front_resized, ox1 as i64, oy1 as i64);
+
+    // Place Back in bottom half
+    let ox2 = (a4_w - target_card_w) / 2;
+    let oy2 = a4_h / 2 + (a4_h / 2 - target_card_h2) / 2;
+    image::imageops::overlay(&mut canvas, &back_resized, ox2 as i64, oy2 as i64);
+
+    DynamicImage::ImageRgba8(canvas)
+}

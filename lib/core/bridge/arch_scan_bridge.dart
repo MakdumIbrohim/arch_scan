@@ -20,6 +20,11 @@ typedef GeneratePdfDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef GenerateSearchablePdfC = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef GenerateSearchablePdfDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
 
+typedef GenerateConfiguredPdfC = Int32 Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+typedef GenerateConfiguredPdfDart = int Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+
 class Point2D {
   final double x;
   final double y;
@@ -50,6 +55,7 @@ class ArchScanBridge {
   late final ProcessPageDart _processPageFn;
   late final GeneratePdfDart _generatePdfFn;
   late final GenerateSearchablePdfDart _generateSearchablePdfFn;
+  late final GenerateConfiguredPdfDart _generateConfiguredPdfFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -89,6 +95,8 @@ class ArchScanBridge {
           .lookupFunction<GeneratePdfC, GeneratePdfDart>('arch_scan_generate_pdf');
       _generateSearchablePdfFn = _lib.lookupFunction<GenerateSearchablePdfC,
           GenerateSearchablePdfDart>('arch_scan_generate_searchable_pdf');
+      _generateConfiguredPdfFn = _lib.lookupFunction<GenerateConfiguredPdfC,
+          GenerateConfiguredPdfDart>('arch_scan_generate_pdf_configured');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -221,6 +229,70 @@ class ArchScanBridge {
       calloc.free(outPtr);
     }
   }
+
+  bool generateConfiguredPdf({
+    required List<PageSpecData> pages,
+    required PdfSettings settings,
+    required String outputPdfPath,
+  }) {
+    if (!_initialized) return false;
+
+    final pagesJson = jsonEncode(pages.map((p) => p.toJson()).toList());
+    final configJson = jsonEncode(settings.toJson());
+
+    final pagesPtr = pagesJson.toNativeUtf8();
+    final configPtr = configJson.toNativeUtf8();
+    final outPtr = outputPdfPath.toNativeUtf8();
+
+    try {
+      final res = _generateConfiguredPdfFn(pagesPtr, configPtr, outPtr);
+      return res == 0;
+    } catch (_) {
+      return generateSearchablePdf(
+        pages: pages,
+        outputPdfPath: outputPdfPath,
+      );
+    } finally {
+      calloc.free(pagesPtr);
+      calloc.free(configPtr);
+      calloc.free(outPtr);
+    }
+  }
+}
+
+enum PdfPaperSize {
+  a4('A4', 'A4 (210 x 297 mm)'),
+  letter('Letter', 'US Letter (8.5 x 11 in)'),
+  fit('Fit', 'Fit to Image');
+
+  final String code;
+  final String label;
+  const PdfPaperSize(this.code, this.label);
+}
+
+enum PdfQuality {
+  high('High', 'High Quality (300 DPI)'),
+  medium('Medium', 'Standard (Balanced)'),
+  low('Low', 'Compact (Smallest Size)');
+
+  final String code;
+  final String label;
+  const PdfQuality(this.code, this.label);
+}
+
+class PdfSettings {
+  final PdfPaperSize paperSize;
+  final PdfQuality quality;
+
+  const PdfSettings({
+    this.paperSize = PdfPaperSize.a4,
+    this.quality = PdfQuality.high,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'paper_size': paperSize.code,
+        'quality': quality.code,
+      };
 }
 
 class OcrItem {

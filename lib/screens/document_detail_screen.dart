@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import '../core/bridge/arch_scan_bridge.dart';
 import '../core/theme/arch_theme.dart';
 import '../models/document_model.dart';
 import '../services/document_storage.dart';
@@ -114,8 +115,107 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   Future<void> _exportPdf() async {
     if (_document == null || _document!.pages.isEmpty) return;
 
+    PdfPaperSize selectedPaper = PdfPaperSize.a4;
+    PdfQuality selectedQuality = PdfQuality.high;
+
+    final config = await showModalBottomSheet<PdfSettings>(
+      context: context,
+      backgroundColor: ArchTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.picture_as_pdf, color: ArchTheme.primary),
+                  SizedBox(width: 8),
+                  Text(
+                    'PDF Export Settings',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Paper Size',
+                style: TextStyle(
+                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: PdfPaperSize.values.map((p) {
+                  final isSel = selectedPaper == p;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(p.name.toUpperCase()),
+                      selected: isSel,
+                      selectedColor: ArchTheme.primary.withOpacity(0.2),
+                      side: BorderSide(
+                        color: isSel ? ArchTheme.primary : ArchTheme.border,
+                      ),
+                      onSelected: (_) => setModalState(() => selectedPaper = p),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Compression Quality',
+                style: TextStyle(
+                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: PdfQuality.values.map((q) {
+                  final isSel = selectedQuality == q;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(q.name.toUpperCase()),
+                      selected: isSel,
+                      selectedColor: ArchTheme.accent.withOpacity(0.2),
+                      side: BorderSide(
+                        color: isSel ? ArchTheme.accent : ArchTheme.border,
+                      ),
+                      onSelected: (_) =>
+                          setModalState(() => selectedQuality = q),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(
+                    ctx,
+                    PdfSettings(
+                      paperSize: selectedPaper,
+                      quality: selectedQuality,
+                    ),
+                  ),
+                  icon: const Icon(Icons.download_done),
+                  label: const Text('Generate PDF'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (config == null || !mounted) return;
+
     setState(() => _isGeneratingPdf = true);
-    final pdfPath = await DocumentStorageService.instance.generatePdfForDocument(_document!);
+    final pdfPath = await DocumentStorageService.instance
+        .generatePdfForDocument(_document!, settings: config);
     setState(() => _isGeneratingPdf = false);
 
     if (!mounted) return;
@@ -136,7 +236,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Rust engine successfully created PDF:'),
+              Text(
+                  'Created with ${config.paperSize.name.toUpperCase()} format (${config.quality.name.toUpperCase()} quality):'),
               const SizedBox(height: 8),
               SelectableText(
                 pdfPath,
@@ -149,6 +250,14 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             ],
           ),
           actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _shareDocument();
+              },
+              icon: const Icon(Icons.share, color: ArchTheme.accent),
+              label: const Text('Share'),
+            ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Done'),

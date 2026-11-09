@@ -90,7 +90,10 @@ class DocumentStorageService {
     await file.writeAsString(jsonString);
   }
 
-  Future<String?> generatePdfForDocument(ScanDocument doc) async {
+  Future<String?> generatePdfForDocument(
+    ScanDocument doc, {
+    PdfSettings? settings,
+  }) async {
     if (doc.pages.isEmpty) return null;
 
     final dir = await appDirectory;
@@ -107,8 +110,10 @@ class DocumentStorageService {
             ))
         .toList();
 
-    final success = ArchScanBridge.instance.generateSearchablePdf(
+    final pdfSettings = settings ?? const PdfSettings();
+    final success = ArchScanBridge.instance.generateConfiguredPdf(
       pages: pageSpecs,
+      settings: pdfSettings,
       outputPdfPath: outPath,
     );
 

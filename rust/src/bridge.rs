@@ -1,6 +1,9 @@
 use crate::detection::detect_document_corners;
 use crate::enhancement::{apply_filter, apply_rotation, FilterType};
-use crate::pdf::{create_pdf_from_images, create_searchable_pdf, PageSpec};
+use crate::pdf::{
+    create_pdf_from_images, create_searchable_pdf, create_searchable_pdf_with_config, PageSpec,
+    PdfConfig,
+};
 use crate::perspective::{warp_perspective, Point};
 use image::GenericImageView;
 use std::ffi::CStr;
@@ -181,6 +184,49 @@ pub extern "C" fn arch_scan_generate_searchable_pdf(
     };
 
     match create_searchable_pdf(&specs, out_str.to_string()) {
+        Ok(_) => 0,
+        Err(_) => -3,
+    }
+}
+
+/// Generate Searchable PDF with custom configuration (Paper size & Compression quality):
+/// `config_json` = `{"paper_size": "A4", "quality": "High"}`
+#[no_mangle]
+pub extern "C" fn arch_scan_generate_pdf_configured(
+    pages_json: *const c_char,
+    config_json: *const c_char,
+    output_pdf_path: *const c_char,
+) -> i32 {
+    if pages_json.is_null() || output_pdf_path.is_null() {
+        return -1;
+    }
+
+    let pages_str = match unsafe { CStr::from_ptr(pages_json) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let out_str = match unsafe { CStr::from_ptr(output_pdf_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let specs: Vec<PageSpec> = match serde_json::from_str(pages_str) {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+
+    let config: PdfConfig = if !config_json.is_null() {
+        if let Ok(c_str) = unsafe { CStr::from_ptr(config_json) }.to_str() {
+            serde_json::from_str(c_str).unwrap_or_default()
+        } else {
+            PdfConfig::default()
+        }
+    } else {
+        PdfConfig::default()
+    };
+
+    match create_searchable_pdf_with_config(&specs, &config, out_str.to_string()) {
         Ok(_) => 0,
         Err(_) => -3,
     }

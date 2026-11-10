@@ -349,8 +349,19 @@ pub fn composite_overlay(
 /// Replaces pixels inside the mask (marked > 0) with a weighted blend of surrounding valid boundary pixels.
 pub fn inpaint_mask(base: &DynamicImage, mask: &DynamicImage) -> DynamicImage {
     let (w, h) = base.dimensions();
+    if w == 0 || h == 0 {
+        return base.clone();
+    }
+
     let mut current_img = base.to_rgba8();
-    let mask_luma = mask.to_luma8();
+
+    // Resize mask exactly to base image dimensions if they differ
+    let mask_resized = if mask.width() != w || mask.height() != h {
+        mask.resize_exact(w, h, image::imageops::FilterType::Nearest)
+    } else {
+        mask.clone()
+    };
+    let mask_luma = mask_resized.to_luma8();
 
     let mut is_masked = vec![false; (w * h) as usize];
     let mut masked_count = 0;
@@ -437,7 +448,13 @@ pub fn inpaint_mask(base: &DynamicImage, mask: &DynamicImage) -> DynamicImage {
                     let g = (sum_g / sum_w).round().clamp(0.0, 255.0) as u8;
                     let b = (sum_b / sum_w).round().clamp(0.0, 255.0) as u8;
                     newly_inpainted.push((x as u32, y as u32, r, g, b));
+                    if newly_inpainted.len() >= 20000 {
+                        break;
+                    }
                 }
+            }
+            if newly_inpainted.len() >= 20000 {
+                break;
             }
         }
 

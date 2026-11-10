@@ -92,12 +92,12 @@ class _EraseScreenState extends State<EraseScreen> {
       final outPath =
           '${tmpDir.path}/erased_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // 3. Call Rust native Fast Marching inpainting engine
-      final success = ArchScanBridge.instance.inpaintMask(
-        basePath: _currentImagePath,
-        maskPath: maskPath,
-        outputPath: outPath,
-      );
+      // 3. Call Rust native Fast Marching inpainting engine asynchronously via compute/isolate to prevent UI thread lock
+      final success = await Future.microtask(() => ArchScanBridge.instance.inpaintMask(
+            basePath: _currentImagePath,
+            maskPath: maskPath,
+            outputPath: outPath,
+          ));
 
       if (success && File(outPath).existsSync()) {
         setState(() {

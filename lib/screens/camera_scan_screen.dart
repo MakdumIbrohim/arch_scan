@@ -428,6 +428,14 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 12,
                 children: [
+                    _buildFeatureIcon(
+                    icon: Icons.description_outlined,
+                    label: 'Impor Dokumen',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _importDocumentFiles();
+                    },
+                  ),
                   _buildFeatureIcon(
                     icon: Icons.document_scanner,
                     label: 'Scan Dokumen',
@@ -576,19 +584,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
           // 1. Live hardware camera preview (polos tanpa garis reticle seperti di CamScanner asli)
           if (_isCameraInitialized && _controller != null)
             Positioned.fill(
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.center,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: _controller!.value.previewSize?.height ?? 1,
-                      height: _controller!.value.previewSize?.width ?? 1,
-                      child: CameraPreview(_controller!),
-                    ),
-                  ),
-                ),
-              ),
+              child: CameraPreview(_controller!),
             )
           else if (_permissionDenied)
             Center(
@@ -711,9 +707,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
                     // Right control group: Flash, Enhance, HD, Menu
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Flash mode cycle
                         IconButton(
+                          constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                          padding: EdgeInsets.zero,
                           icon: Icon(
                             _getFlashIcon(),
                             color: _flashMode == FlashMode.off
@@ -724,12 +723,14 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                           tooltip: 'Lampu Kilat',
                           onPressed: _cycleFlashMode,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
 
                         // Auto-enhance filter toggle
                         IconButton(
+                          constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                          padding: EdgeInsets.zero,
                           icon: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(3),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
@@ -740,7 +741,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                             child: Icon(
                               Icons.auto_fix_high,
                               color: _autoEnhance ? tealAccent : Colors.white,
-                              size: 16,
+                              size: 15,
                             ),
                           ),
                           tooltip: 'Penyempurnaan Otomatis',
@@ -779,12 +780,14 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
 
                         // 3-dot overflow menu
                         IconButton(
+                          constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                          padding: EdgeInsets.zero,
                           icon: const Icon(Icons.more_vert,
-                              color: Colors.white, size: 24),
+                              color: Colors.white, size: 22),
                           tooltip: 'Pengaturan Lanjutan',
                           onPressed: _showCameraSettingsMenu,
                         ),
@@ -798,12 +801,12 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
           // 3. Floating Pill Selector: [ Satu Halaman | Beberapa Halaman ]
           Positioned(
-            bottom: 155,
+            bottom: 160,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.all(3),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: const Color(0xCC18181B), // Translucent dark
                   borderRadius: BorderRadius.circular(24),
@@ -813,7 +816,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildPillOption(
-                      label: 'Satu Halaman',
+                      label: 'Satu',
                       isSelected: !_isBatchMode,
                       onTap: () {
                         setState(() {
@@ -822,8 +825,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                         });
                       },
                     ),
+                    const SizedBox(width: 2),
                     _buildPillOption(
-                      label: 'Beberapa Halaman',
+                      label: 'Batch',
                       isSelected: _isBatchMode,
                       onTap: () {
                         setState(() => _isBatchMode = true);
@@ -835,61 +839,58 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             ),
           ),
 
-          // 4. Horizontal Feature Carousel Bar: [ Kode QR | Tanda tangani | Scan | Hapus Cerdas | Kartu ID ]
+          // 4. Horizontal Feature Carousel Bar: [ Kode QR | Tanda tangan | Scan | Hapus Cerdas | Kartu ID ]
           Positioned(
-            bottom: 102,
+            bottom: 110,
             left: 0,
             right: 0,
-            child: Container(
+            child: SizedBox(
               height: 38,
-              alignment: Alignment.center,
-              child: SingleChildScrollView(
+              child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildCarouselItem(
-                      label: 'Kode QR',
-                      hasBadge: true,
-                      isSelected: _activeMode == 'Kode QR',
-                      onTap: () => _onModeSelected('Kode QR'),
-                    ),
-                    const SizedBox(width: 24),
-                    _buildCarouselItem(
-                      label: 'Tanda tangani',
-                      hasBadge: true,
-                      isSelected: _activeMode == 'Tanda tangani',
-                      onTap: () => _onModeSelected('Tanda tangani'),
-                    ),
-                    const SizedBox(width: 24),
-                    _buildCarouselItem(
-                      label: 'Scan',
-                      hasBadge: false,
-                      isSelected: _activeMode == 'Scan',
-                      onTap: () => _onModeSelected('Scan'),
-                    ),
-                    const SizedBox(width: 24),
-                    _buildCarouselItem(
-                      label: 'Hapus Cerdas',
-                      hasBadge: false,
-                      isSelected: _activeMode == 'Hapus Cerdas',
-                      onTap: () => _onModeSelected('Hapus Cerdas'),
-                    ),
-                    const SizedBox(width: 24),
-                    _buildCarouselItem(
-                      label: 'Kartu ID',
-                      hasBadge: false,
-                      isSelected: _activeMode == 'Kartu ID',
-                      onTap: () => _onModeSelected('Kartu ID'),
-                    ),
-                  ],
-                ),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _buildCarouselItem(
+                    label: 'Kode QR',
+                    hasBadge: true,
+                    isSelected: _activeMode == 'Kode QR',
+                    onTap: () => _onModeSelected('Kode QR'),
+                  ),
+                  const SizedBox(width: 20),
+                  _buildCarouselItem(
+                    label: 'Tanda tangan',
+                    hasBadge: true,
+                    isSelected: _activeMode == 'Tanda tangani',
+                    onTap: () => _onModeSelected('Tanda tangani'),
+                  ),
+                  const SizedBox(width: 20),
+                  _buildCarouselItem(
+                    label: 'Scan',
+                    hasBadge: false,
+                    isSelected: _activeMode == 'Scan',
+                    onTap: () => _onModeSelected('Scan'),
+                  ),
+                  const SizedBox(width: 20),
+                  _buildCarouselItem(
+                    label: 'Hapus Cerdas',
+                    hasBadge: false,
+                    isSelected: _activeMode == 'Hapus Cerdas',
+                    onTap: () => _onModeSelected('Hapus Cerdas'),
+                  ),
+                  const SizedBox(width: 20),
+                  _buildCarouselItem(
+                    label: 'Kartu ID',
+                    hasBadge: false,
+                    isSelected: _activeMode == 'Kartu ID',
+                    onTap: () => _onModeSelected('Kartu ID'),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // 5. Bottom Shutter Bar: [Semua Fitur]  ( SHUTTER )  [Impor Gambar]  [Impor File]
+          // 5. Bottom Shutter Bar: [Semua Fitur]  ( SHUTTER )  [Impor Gambar]
           Positioned(
             bottom: 0,
             left: 0,
@@ -898,7 +899,7 @@ class _CameraScanScreenState extends State<CameraScanScreen>
               top: false,
               child: Container(
                 height: 96,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 32),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
@@ -909,23 +910,27 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Kiri: Semua Fitur (Grid 9-dots)
-                    GestureDetector(
-                      onTap: _showAllFeaturesModal,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.apps, color: Colors.white, size: 26),
-                          SizedBox(height: 4),
-                          Text(
-                            'Semua Fitur',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                    // Kiri: Semua Fitur (Lebar pasti 68)
+                    SizedBox(
+                      width: 68,
+                      child: GestureDetector(
+                        onTap: _showAllFeaturesModal,
+                        behavior: HitTestBehavior.opaque,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.apps, color: Colors.white, size: 26),
+                            SizedBox(height: 4),
+                            Text(
+                              'Fitur',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
@@ -933,8 +938,8 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                     GestureDetector(
                       onTap: _isTakingPicture ? null : _captureImage,
                       child: Container(
-                        width: 72,
-                        height: 72,
+                        width: 74,
+                        height: 74,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -966,93 +971,64 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                       ),
                     ),
 
-                    // Kanan: Impor Gambar & Impor File (atau Tombol Selesai Batch jika ada antrean)
-                    _isBatchMode && _batchQueue.isNotEmpty
-                        ? GestureDetector(
-                            onTap: _finishBatch,
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: tealAccent,
-                                borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: Colors.white, width: 1.5),
+                    // Kanan: Impor Gambar (Lebar pasti 68, simetris sempurna dengan Kiri)
+                    SizedBox(
+                      width: 68,
+                      child: _isBatchMode && _batchQueue.isNotEmpty
+                          ? GestureDetector(
+                              onTap: _finishBatch,
+                              child: Container(
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: tealAccent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white, width: 1.5),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${_batchQueue.length}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const Text(
+                                      'Selesai',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                            )
+                          : GestureDetector(
+                              onTap: _pickFromGallery,
+                              behavior: HitTestBehavior.opaque,
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
+                                children: const [
+                                  Icon(Icons.photo_library_outlined,
+                                      color: Colors.white, size: 26),
+                                  SizedBox(height: 4),
                                   Text(
-                                    '${_batchQueue.length}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'Selesai',
+                                    'Impor',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          )
-                        : Row(
-                            children: [
-                              // Impor Gambar
-                              GestureDetector(
-                                onTap: _pickFromGallery,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(Icons.photo_outlined,
-                                          color: Colors.white, size: 24),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Impor Gambar',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Impor File
-                              GestureDetector(
-                                onTap: _importDocumentFiles,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(Icons.description_outlined,
-                                          color: Colors.white, size: 24),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Impor File',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
                   ],
                 ),
               ),
@@ -1071,7 +1047,9 @@ class _CameraScanScreenState extends State<CameraScanScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        width: 64,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF3F3F46) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),

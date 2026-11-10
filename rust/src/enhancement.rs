@@ -7,6 +7,7 @@ pub enum FilterType {
     BlackAndWhite = 2,
     Grayscale = 3,
     Sharp = 4,
+    Whiteboard = 5,
 }
 
 impl From<i32> for FilterType {
@@ -16,6 +17,7 @@ impl From<i32> for FilterType {
             2 => FilterType::BlackAndWhite,
             3 => FilterType::Grayscale,
             4 => FilterType::Sharp,
+            5 => FilterType::Whiteboard,
             _ => FilterType::Original,
         }
     }
@@ -28,6 +30,7 @@ pub fn apply_filter(img: &DynamicImage, filter: FilterType) -> DynamicImage {
         FilterType::BlackAndWhite => apply_black_and_white(img),
         FilterType::Grayscale => apply_grayscale(img),
         FilterType::Sharp => apply_sharp(img),
+        FilterType::Whiteboard => apply_whiteboard(img),
     }
 }
 
@@ -205,4 +208,139 @@ fn apply_sharp(img: &DynamicImage) -> DynamicImage {
     }
 
     DynamicImage::ImageRgba8(out)
+}
+
+/// Stitch 2-sided ID Card (Front and Back) onto a single vertical A4 document sheet
+pub fn stitch_id_card(front: &DynamicImage, back: &DynamicImage) -> DynamicImage {
+    let a4_w = 1200u32;
+    let a4_h = 1700u32;
+    let mut canvas: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_pixel(a4_w, a4_h, Rgba([255, 255, 255, 255]));
+
+    let target_card_w = 900u32;
+    let front_aspect = front.width() as f32 / front.height() as f32;
+    let target_card_h1 = (target_card_w as f32 / front_aspect).round() as u32;
+
+    let front_resized = front.resize_exact(
+        target_card_w,
+        target_card_h1,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    let back_aspect = back.width() as f32 / back.height() as f32;
+    let target_card_h2 = (target_card_w as f32 / back_aspect).round() as u32;
+    let back_resized = back.resize_exact(
+        target_card_w,
+        target_card_h2,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    // Place Front in top half
+    let ox1 = (a4_w - target_card_w) / 2;
+    let oy1 = (a4_h / 2 - target_card_h1) / 2;
+    image::imageops::overlay(&mut canvas, &front_resized, ox1 as i64, oy1 as i64);
+
+    // Place Back in bottom half
+    let ox2 = (a4_w - target_card_w) / 2;
+    let oy2 = a4_h / 2 + (a4_h / 2 - target_card_h2) / 2;
+    image::imageops::overlay(&mut canvas, &back_resized, ox2 as i64, oy2 as i64);
+
+    DynamicImage::ImageRgba8(canvas)
+}
+
+/// Stitch arbitrary number of page images vertically into one continuous long image (CamScanner Long Picture Stitch)
+pub fn stitch_long_image(images: &[DynamicImage]) -> Result<DynamicImage, String> {
+    if images.is_empty() {
+        return Err("No images to stitch".to_string());
+    }
+
+    let target_w = 1080u32;
+    let mut total_h = 0u32;
+    let gap = 16u32;
+
+    let mut resized_images = Vec::new();
+    for img in images {
+        let aspect = img.width() as f32 / img.height() as f32;
+        let h = (target_w as f32 / aspect).round() as u32;
+        let r = img.resize_exact(target_w, h, image::imageops::FilterType::Lanczos3);
+        total_h += h;
+        resized_images.push(r);
+    }
+
+    if images.len() > 1 {
+        total_h += (images.len() as u32 - 1) * gap;
+    }
+
+    let mut canvas: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_pixel(target_w, total_h, Rgba([245, 245, 245, 255]));
+
+    let mut current_y = 0u32;
+    for (i, img) in resized_images.iter().enumerate() {
+        image::imageops::overlay(&mut canvas, img, 0, current_y as i64);
+        current_y += img.height();
+        if i + 1 < resized_images.len() {
+            current_y += gap;
+        }
+    }
+
+    Ok(DynamicImage::ImageRgba8(canvas))
+}
+
+/// Whiteboard filter: High-contrast whitening with vibrant marker preservation
+fn apply_whiteboard(img: &DynamicImage) -> DynamicImage {
+    let (w, h) = img.dimensions();
+    let rgb = img.to_rgb8();
+    let mut out = ImageBuffer::new(w, h);
+
+    for (x, y, p) in rgb.enumerate_pixels() {
+        let r = p[0] as f32;
+        let g = p[1] as f32;
+        let b = p[2] as f32;
+        let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if lum > 155.0 {
+            let t = (lum - 155.0) / 100.0;
+            let factor = 1.0 + t * 0.5;
+            let nr = ((r * factor).min(255.0)) as u8;
+            let ng = ((g * factor).min(255.0)) as u8;
+            let nb = ((b * factor).min(255.0)) as u8;
+            out.put_pixel(x, y, Rgba([nr, ng, nb, 255]));
+        } else {
+            let boost = 1.2;
+            let nr = ((r * boost).clamp(0.0, 255.0)) as u8;
+            let ng = ((g * boost).clamp(0.0, 255.0)) as u8;
+            let nb = ((b * boost).clamp(0.0, 255.0)) as u8;
+            out.put_pixel(x, y, Rgba([nr, ng, nb, 255]));
+        }
+    }
+    DynamicImage::ImageRgba8(out)
+}
+
+/// Composite a transparent overlay (such as a signature or stamp) onto a base image
+pub fn composite_overlay(
+    base: &DynamicImage,
+    overlay: &DynamicImage,
+    norm_x: f32,
+    norm_y: f32,
+    scale: f32,
+) -> DynamicImage {
+    let mut base_rgba = base.to_rgba8();
+    let base_w = base.width() as f32;
+    let base_h = base.height() as f32;
+
+    let target_w = ((base_w * 0.35) * scale.clamp(0.1, 3.0)).round() as u32;
+    let aspect = overlay.height() as f32 / overlay.width().max(1) as f32;
+    let target_h = (target_w as f32 * aspect).round() as u32;
+
+    let overlay_resized = overlay.resize_exact(
+        target_w.max(1),
+        target_h.max(1),
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    let px = (norm_x * base_w).round() as i64;
+    let py = (norm_y * base_h).round() as i64;
+
+    image::imageops::overlay(&mut base_rgba, &overlay_resized, px, py);
+    DynamicImage::ImageRgba8(base_rgba)
 }

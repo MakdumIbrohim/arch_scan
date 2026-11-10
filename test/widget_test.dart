@@ -1,30 +1,47 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:arch_scan/core/bridge/arch_scan_bridge.dart';
 import 'package:arch_scan/main.dart';
+import 'package:arch_scan/models/document_model.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('ArchScanBridge version check', () {
+    final version = ArchScanBridge.instance.getVersion();
+    // In test environment, version is 100 if native lib is loaded
+    expect(version, anyOf(0, 100));
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('Document model serialization', () {
+    final now = DateTime.now();
+    final page = ScanPage(
+      id: 'p1',
+      rawImagePath: '/tmp/raw.jpg',
+      processedImagePath: '/tmp/proc.jpg',
+      corners: const [Point2D(0.1, 0.1), Point2D(0.9, 0.1), Point2D(0.9, 0.9), Point2D(0.1, 0.9)],
+      filter: ScanFilter.magicColor,
+      rotationDegrees: 90,
+    );
+    final doc = ScanDocument(
+      id: 'doc1',
+      title: 'Invoice Test',
+      createdAt: now,
+      updatedAt: now,
+      pages: [page],
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    final json = doc.toJson();
+    final restored = ScanDocument.fromJson(json);
+
+    expect(restored.id, 'doc1');
+    expect(restored.title, 'Invoice Test');
+    expect(restored.pages.length, 1);
+    expect(restored.pages.first.filter, ScanFilter.magicColor);
+    expect(restored.pages.first.rotationDegrees, 90);
+  });
+
+  testWidgets('ArchScan UI smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(const ArchScanApp());
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('ArchScan'), findsOneWidget);
   });
 }

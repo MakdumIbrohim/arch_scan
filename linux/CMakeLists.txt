@@ -106,6 +106,14 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
     COMPONENT Runtime)
 endforeach(bundled_library)
 
+# Install ArchScan Rust core shared library
+set(ARCH_SCAN_CORE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../libarch_scan_core.so")
+if(EXISTS "${ARCH_SCAN_CORE_LIB}")
+  install(FILES "${ARCH_SCAN_CORE_LIB}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Rust build artifacts & test data
+rust/target/
+*.so
+!android/app/src/main/jniLibs/**/*.so
+.arch_scan_data/
+.kotlin/
+android/.kotlin/
+

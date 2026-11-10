@@ -7,6 +7,7 @@ import 'crop_screen.dart';
 import 'batch_process_screen.dart';
 import 'id_card_scan_screen.dart';
 import 'qr_screen.dart';
+import 'erase_screen.dart';
 
 class CameraScanScreen extends StatefulWidget {
   final String? documentId;
@@ -296,6 +297,30 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       setState(() {
         _batchQueue.add(capturedPath!);
       });
+    } else if (_activeMode == 'Hapus Cerdas') {
+      if (_flashMode == FlashMode.torch && _controller != null) {
+        try {
+          await _controller!.setFlashMode(FlashMode.off);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => EraseScreen(
+            imagePath: capturedPath!,
+            onImageSaved: (savedPath) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => CropScreen(
+                    imagePath: savedPath,
+                    documentId: widget.documentId,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
     } else {
       if (_flashMode == FlashMode.torch && _controller != null) {
         try {

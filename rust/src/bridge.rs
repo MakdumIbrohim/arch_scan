@@ -358,3 +358,43 @@ pub extern "C" fn arch_scan_composite_overlay(
         0
     }
 }
+
+/// Inpaint / Smart Erase unwanted elements (fingers, scribbles, stamps) using a binary mask image
+#[no_mangle]
+pub extern "C" fn arch_scan_inpaint_mask(
+    base_path: *const c_char,
+    mask_path: *const c_char,
+    output_path: *const c_char,
+) -> i32 {
+    if base_path.is_null() || mask_path.is_null() || output_path.is_null() {
+        return -1;
+    }
+    let b_str = match unsafe { CStr::from_ptr(base_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let m_str = match unsafe { CStr::from_ptr(mask_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let out_str = match unsafe { CStr::from_ptr(output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let base = match image::open(b_str) {
+        Ok(img) => img,
+        Err(_) => return -2,
+    };
+    let mask = match image::open(m_str) {
+        Ok(img) => img,
+        Err(_) => return -2,
+    };
+
+    let inpainted = crate::enhancement::inpaint_mask(&base, &mask);
+    if inpainted.save(out_str).is_err() {
+        -3
+    } else {
+        0
+    }
+}

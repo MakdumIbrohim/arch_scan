@@ -9,6 +9,7 @@ import '../services/document_storage.dart';
 import 'crop_screen.dart';
 import 'camera_scan_screen.dart';
 import 'ocr_screen.dart';
+import 'erase_screen.dart';
 import '../widgets/signature_pad.dart';
 
 class DocumentDetailScreen extends StatefulWidget {
@@ -485,6 +486,28 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                       ),
                     ),
                   ).then((_) => _loadDocument());
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.auto_fix_high_outlined),
+                title: const Text('Hapus Cerdas (Inpainting Objek / Noda)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EraseScreen(
+                        imagePath: page.processedImagePath,
+                        onImageSaved: (savedPath) async {
+                          page.processedImagePath = savedPath;
+                          _document!.updatedAt = DateTime.now();
+                          await DocumentStorageService.instance
+                              .saveDocument(_document!);
+                          _loadDocument();
+                        },
+                      ),
+                    ),
+                  );
                 },
               ),
               ListTile(

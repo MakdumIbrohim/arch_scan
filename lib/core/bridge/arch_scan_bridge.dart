@@ -38,6 +38,11 @@ typedef CompositeOverlayC = Int32 Function(
 typedef CompositeOverlayDart = int Function(
     Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, double, double, double);
 
+typedef InpaintMaskC = Int32 Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+typedef InpaintMaskDart = int Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
+
 class Point2D {
   final double x;
   final double y;
@@ -73,6 +78,7 @@ class ArchScanBridge {
   late final StitchIdCardDart _stitchIdCardFn;
   late final StitchLongImageDart _stitchLongImageFn;
   late final CompositeOverlayDart _compositeOverlayFn;
+  late final InpaintMaskDart _inpaintMaskFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -123,6 +129,8 @@ class ArchScanBridge {
           StitchLongImageDart>('arch_scan_stitch_long_image');
       _compositeOverlayFn = _lib.lookupFunction<CompositeOverlayC,
           CompositeOverlayDart>('arch_scan_composite_overlay');
+      _inpaintMaskFn = _lib
+          .lookupFunction<InpaintMaskC, InpaintMaskDart>('arch_scan_inpaint_mask');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -345,6 +353,26 @@ class ArchScanBridge {
     } finally {
       calloc.free(bPtr);
       calloc.free(oPtr);
+      calloc.free(outPtr);
+    }
+  }
+
+  bool inpaintMask({
+    required String basePath,
+    required String maskPath,
+    required String outputPath,
+  }) {
+    if (!_initialized) return false;
+    final bPtr = basePath.toNativeUtf8();
+    final mPtr = maskPath.toNativeUtf8();
+    final outPtr = outputPath.toNativeUtf8();
+
+    try {
+      final res = _inpaintMaskFn(bPtr, mPtr, outPtr);
+      return res == 0;
+    } finally {
+      calloc.free(bPtr);
+      calloc.free(mPtr);
       calloc.free(outPtr);
     }
   }

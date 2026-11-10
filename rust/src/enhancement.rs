@@ -344,3 +344,113 @@ pub fn composite_overlay(
     image::imageops::overlay(&mut base_rgba, &overlay_resized, px, py);
     DynamicImage::ImageRgba8(base_rgba)
 }
+
+/// Smart Erase (Inpainting) using Fast Boundary Marching:
+/// Replaces pixels inside the mask (marked > 0) with a weighted blend of surrounding valid boundary pixels.
+pub fn inpaint_mask(base: &DynamicImage, mask: &DynamicImage) -> DynamicImage {
+    let (w, h) = base.dimensions();
+    let mut current_img = base.to_rgba8();
+    let mask_luma = mask.to_luma8();
+
+    let mut is_masked = vec![false; (w * h) as usize];
+    let mut masked_count = 0;
+
+    for y in 0..h {
+        for x in 0..w {
+            let idx = (y * w + x) as usize;
+            if mask_luma.get_pixel(x, y)[0] > 128 {
+                is_masked[idx] = true;
+                masked_count += 1;
+            }
+        }
+    }
+
+    if masked_count == 0 {
+        return base.clone();
+    }
+
+    // Inpaint iteratively from boundary inwards (up to 20 passes)
+    let radius: i32 = 4;
+    for _pass in 0..20 {
+        let mut newly_inpainted = Vec::new();
+
+        for y in 0..h as i32 {
+            for x in 0..w as i32 {
+                let idx = (y as u32 * w + x as u32) as usize;
+                if !is_masked[idx] {
+                    continue;
+                }
+
+                // Check if adjacent to an unmasked pixel (boundary pixel)
+                let mut has_unmasked_neighbor = false;
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        if dx == 0 && dy == 0 {
+                            continue;
+                        }
+                        let nx = x + dx;
+                        let ny = y + dy;
+                        if nx >= 0 && nx < w as i32 && ny >= 0 && ny < h as i32 {
+                            let nidx = (ny as u32 * w + nx as u32) as usize;
+                            if !is_masked[nidx] {
+                                has_unmasked_neighbor = true;
+                                break;
+                            }
+                        }
+                    }
+                    if has_unmasked_neighbor {
+                        break;
+                    }
+                }
+
+                if !has_unmasked_neighbor {
+                    continue;
+                }
+
+                // Weighted distance interpolation from nearby valid pixels
+                let mut sum_r = 0.0f32;
+                let mut sum_g = 0.0f32;
+                let mut sum_b = 0.0f32;
+                let mut sum_w = 0.0f32;
+
+                for dy in -radius..=radius {
+                    for dx in -radius..=radius {
+                        let nx = x + dx;
+                        let ny = y + dy;
+                        if nx >= 0 && nx < w as i32 && ny >= 0 && ny < h as i32 {
+                            let nidx = (ny as u32 * w + nx as u32) as usize;
+                            if !is_masked[nidx] {
+                                let dist_sq = (dx * dx + dy * dy) as f32;
+                                let weight = 1.0 / (dist_sq.sqrt() + 0.1);
+                                let p = current_img.get_pixel(nx as u32, ny as u32);
+                                sum_r += p[0] as f32 * weight;
+                                sum_g += p[1] as f32 * weight;
+                                sum_b += p[2] as f32 * weight;
+                                sum_w += weight;
+                            }
+                        }
+                    }
+                }
+
+                if sum_w > 0.0 {
+                    let r = (sum_r / sum_w).round().clamp(0.0, 255.0) as u8;
+                    let g = (sum_g / sum_w).round().clamp(0.0, 255.0) as u8;
+                    let b = (sum_b / sum_w).round().clamp(0.0, 255.0) as u8;
+                    newly_inpainted.push((x as u32, y as u32, r, g, b));
+                }
+            }
+        }
+
+        if newly_inpainted.is_empty() {
+            break;
+        }
+
+        for (x, y, r, g, b) in newly_inpainted {
+            let idx = (y * w + x) as usize;
+            is_masked[idx] = false;
+            current_img.put_pixel(x, y, Rgba([r, g, b, 255]));
+        }
+    }
+
+    DynamicImage::ImageRgba8(current_img)
+}

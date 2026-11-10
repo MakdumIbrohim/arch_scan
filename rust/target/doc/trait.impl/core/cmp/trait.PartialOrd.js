@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["pdf_writer",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/cmp/trait.PartialOrd.html\" title=\"trait core::cmp::PartialOrd\">PartialOrd</a> for <a class=\"struct\" href=\"pdf_writer/struct.Null.html\" title=\"struct pdf_writer::Null\">Null</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/cmp/trait.PartialOrd.html\" title=\"trait core::cmp::PartialOrd\">PartialOrd</a> for <a class=\"struct\" href=\"pdf_writer/struct.Ref.html\" title=\"struct pdf_writer::Ref\">Ref</a>",0],["impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/cmp/trait.PartialOrd.html\" title=\"trait core::cmp::PartialOrd\">PartialOrd</a> for <a class=\"struct\" href=\"pdf_writer/struct.Name.html\" title=\"struct pdf_writer::Name\">Name</a>&lt;'a&gt;",0],["impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/cmp/trait.PartialOrd.html\" title=\"trait core::cmp::PartialOrd\">PartialOrd</a> for <a class=\"struct\" href=\"pdf_writer/struct.Str.html\" title=\"struct pdf_writer::Str\">Str</a>&lt;'a&gt;",0],["impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.99.1/core/cmp/trait.PartialOrd.html\" title=\"trait core::cmp::PartialOrd\">PartialOrd</a> for <a class=\"struct\" href=\"pdf_writer/struct.TextStr.html\" title=\"struct pdf_writer::TextStr\">TextStr</a>&lt;'a&gt;",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1379]}

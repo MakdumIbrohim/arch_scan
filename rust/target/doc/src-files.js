@@ -1,0 +1,2 @@
+createSrcSidebar('[["pdf_writer",["",[],["actions.rs","annotations.rs","attributes.rs","buf.rs","chunk.rs","color.rs","content.rs","files.rs","font.rs","forms.rs","functions.rs","lib.rs","macros.rs","object.rs","renditions.rs","renumber.rs","structure.rs","transitions.rs","xobject.rs"]]]]');
+//{"start":19,"fragment_lengths":[269]}

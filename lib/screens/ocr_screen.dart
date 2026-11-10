@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/theme/arch_theme.dart';
@@ -17,6 +18,7 @@ class OcrScreen extends StatefulWidget {
 
 class _OcrScreenState extends State<OcrScreen> {
   final ImagePicker _picker = ImagePicker();
+  final TextRecognizer _textRecognizer = TextRecognizer();
   String? _imagePath;
   bool _isProcessing = false;
   final TextEditingController _textCtrl = TextEditingController();
@@ -28,6 +30,13 @@ class _OcrScreenState extends State<OcrScreen> {
       _imagePath = widget.initialImagePath;
       _runOcr();
     }
+  }
+
+  @override
+  void dispose() {
+    _textRecognizer.close();
+    _textCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -44,28 +53,28 @@ class _OcrScreenState extends State<OcrScreen> {
     if (_imagePath == null) return;
     setState(() => _isProcessing = true);
 
-    // Simulate OCR text extraction pipeline / mock extracted document lines
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final inputImage = InputImage.fromFilePath(_imagePath!);
+      final recognizedText = await _textRecognizer.processImage(inputImage);
 
-    final filename = _imagePath!.split('/').last;
-    final buffer = StringBuffer();
-    buffer.writeln('--- HASIL EKSTRAKSI TEKS (OCR) ---');
-    buffer.writeln('Sumber: $filename');
-    buffer.writeln('Tanggal: ${DateTime.now().toLocal().toString().split('.')[0]}');
-    buffer.writeln('');
-    buffer.writeln('DOKUMEN IDENTITAS / ARSIP NEGARA');
-    buffer.writeln('Republik Indonesia');
-    buffer.writeln('NIK / Nomor Dokumen: 3201082504950002');
-    buffer.writeln('Nama Lengkap: ARCH SCAN VERIFIED USER');
-    buffer.writeln('Status: RESMI / TERSERTIFIKASI');
-    buffer.writeln('');
-    buffer.writeln('Dokumen ini telah dipindai dan diproses menggunakan ArchScan Core Engine.');
-    buffer.writeln('Layer teks otomatis diindeks untuk Searchable PDF.');
-
-    setState(() {
-      _textCtrl.text = buffer.toString();
-      _isProcessing = false;
-    });
+      if (mounted) {
+        setState(() {
+          if (recognizedText.text.trim().isEmpty) {
+            _textCtrl.text = 'Tidak ada teks yang terdeteksi pada gambar ini.';
+          } else {
+            _textCtrl.text = recognizedText.text.trim();
+          }
+          _isProcessing = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _textCtrl.text = 'Gagal memproses OCR: $e';
+          _isProcessing = false;
+        });
+      }
+    }
   }
 
   Future<void> _saveAsTxt() async {

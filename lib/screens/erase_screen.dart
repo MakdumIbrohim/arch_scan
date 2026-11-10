@@ -92,12 +92,12 @@ class _EraseScreenState extends State<EraseScreen> {
       final outPath =
           '${tmpDir.path}/erased_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // 3. Call Rust native Fast Marching inpainting engine asynchronously via compute/isolate to prevent UI thread lock
-      final success = await Future.microtask(() => ArchScanBridge.instance.inpaintMask(
-            basePath: _currentImagePath,
-            maskPath: maskPath,
-            outputPath: outPath,
-          ));
+      // 3. Call Rust native Fast Marching inpainting engine
+      final success = ArchScanBridge.instance.inpaintMask(
+        basePath: _currentImagePath,
+        maskPath: maskPath,
+        outputPath: outPath,
+      );
 
       if (success && File(outPath).existsSync()) {
         setState(() {
@@ -197,6 +197,7 @@ class _EraseScreenState extends State<EraseScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: GestureDetector(
                           key: _imageKey,
+                          behavior: HitTestBehavior.opaque,
                           onPanStart: (details) {
                             setState(() {
                               _currentStroke = [details.localPosition];
@@ -216,10 +217,12 @@ class _EraseScreenState extends State<EraseScreen> {
                                 File(_currentImagePath),
                                 fit: BoxFit.contain,
                               ),
-                              CustomPaint(
-                                painter: _BrushPainter(
-                                  strokes: _strokes,
-                                  strokeWidth: _strokeWidth,
+                              Positioned.fill(
+                                child: CustomPaint(
+                                  painter: _BrushPainter(
+                                    strokes: _strokes,
+                                    strokeWidth: _strokeWidth,
+                                  ),
                                 ),
                               ),
                             ],

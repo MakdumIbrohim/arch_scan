@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/bridge/arch_scan_bridge.dart';
 import '../core/theme/arch_theme.dart';
@@ -394,51 +393,12 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   }
 
   void _extractText() {
-    if (_document == null) return;
-    final allText = _document!.pages
-        .expand((p) => p.ocrItems)
-        .map((o) => o.text)
-        .join(' ');
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Lapisan Teks OCR',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 20),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(
-                        text: allText.isNotEmpty ? allText : _document!.title));
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Teks disalin ke papan klip')));
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              allText.isNotEmpty
-                  ? allText
-                  : 'Lapisan teks dokumen diindeks otomatis untuk Searchable PDF.',
-              style: const TextStyle(
-                  color: ArchTheme.textSecondary, fontSize: 13),
-            ),
-          ],
+    if (_document == null || _document!.pages.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OcrScreen(
+          initialImagePath: _document!.pages.first.processedImagePath,
         ),
       ),
     );

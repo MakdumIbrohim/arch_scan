@@ -24,6 +24,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   ScanDocument? _document;
   bool _isLoading = true;
   bool _isGeneratingPdf = false;
+  bool _isGridView = true; // CamScanner standard default: 2-column Grid
 
   @override
   void initState() {
@@ -46,10 +47,32 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     if (_document == null) return;
     if (_document!.pages.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot delete the only page in the document')),
+        const SnackBar(content: Text('Tidak dapat menghapus satu-satunya halaman')),
       );
       return;
     }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: const Text('Hapus Halaman?'),
+        content: Text('Hapus Halaman ${index + 1} dari dokumen ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: ArchTheme.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
 
     setState(() {
       _document!.pages.removeAt(index);
@@ -66,25 +89,25 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: const Text('Rename Document'),
+        title: const Text('Ubah Nama Dokumen'),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter document title',
+          decoration: InputDecoration(
+            hintText: 'Nama Dokumen',
             focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: ArchTheme.primary),
+              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Save'),
+            child: const Text('Simpan'),
           ),
         ],
       ),
@@ -119,19 +142,19 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.picture_as_pdf, color: ArchTheme.primary),
-                  SizedBox(width: 8),
-                  Text(
-                    'PDF Export Settings',
+                  Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Pengaturan Ekspor PDF',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               const Text(
-                'Paper Size',
+                'Ukuran Kertas',
                 style: TextStyle(
                     color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
               ),
@@ -144,9 +167,9 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     child: ChoiceChip(
                       label: Text(p.name.toUpperCase()),
                       selected: isSel,
-                      selectedColor: ArchTheme.primary.withValues(alpha: 0.2),
+                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                       side: BorderSide(
-                        color: isSel ? ArchTheme.primary : ArchTheme.border,
+                        color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
                       ),
                       onSelected: (_) => setModalState(() => selectedPaper = p),
                     ),
@@ -155,7 +178,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Compression Quality',
+                'Kualitas Kompresi',
                 style: TextStyle(
                     color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
               ),
@@ -168,9 +191,9 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     child: ChoiceChip(
                       label: Text(q.name.toUpperCase()),
                       selected: isSel,
-                      selectedColor: ArchTheme.accent.withValues(alpha: 0.2),
+                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                       side: BorderSide(
-                        color: isSel ? ArchTheme.accent : ArchTheme.border,
+                        color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
                       ),
                       onSelected: (_) =>
                           setModalState(() => selectedQuality = q),
@@ -188,7 +211,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               TextField(
                 controller: watermarkCtrl,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. SALINAN / CONFIDENTIAL',
+                  hintText: 'Contoh: SALINAN / CONFIDENTIAL',
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(),
                 ),
@@ -208,7 +231,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     ),
                   ),
                   icon: const Icon(Icons.download_done),
-                  label: const Text('Generate PDF'),
+                  label: const Text('Buat Berkas PDF'),
                 ),
               ),
             ],
@@ -231,11 +254,11 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.picture_as_pdf, color: ArchTheme.accent),
-              SizedBox(width: 8),
-              Text('PDF Generated'),
+              Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('PDF Berhasil Dibuat'),
             ],
           ),
           content: Column(
@@ -243,12 +266,12 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                  'Created with ${config.paperSize.name.toUpperCase()} format (${config.quality.name.toUpperCase()} quality):'),
+                  'Format: ${config.paperSize.name.toUpperCase()} (${config.quality.name.toUpperCase()}):'),
               const SizedBox(height: 8),
               SelectableText(
                 pdfPath,
-                style: const TextStyle(
-                  color: ArchTheme.primary,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
                   fontFamily: 'monospace',
                   fontSize: 12,
                 ),
@@ -261,19 +284,19 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 Navigator.pop(ctx);
                 _shareDocument();
               },
-              icon: const Icon(Icons.share, color: ArchTheme.accent),
-              label: const Text('Share'),
+              icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary),
+              label: const Text('Bagikan'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Done'),
+              child: const Text('Selesai'),
             ),
           ],
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to generate PDF')),
+        const SnackBar(content: Text('Gagal membuat berkas PDF')),
       );
     }
   }
@@ -292,7 +315,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(pdfPath)],
-          text: 'Document: ${_document!.title} (Scanned with ArchScan)',
+          text: 'Dokumen: ${_document!.title} (Dipindai dengan ArchScan)',
         ),
       );
     }
@@ -307,12 +330,12 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(imgPath)],
-          text: '${_document!.title} (Stitched Long Image)',
+          text: '${_document!.title} (Gambar Panjang)',
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to stitch long image')),
+        const SnackBar(content: Text('Gagal membuat gambar panjang')),
       );
     }
   }
@@ -380,7 +403,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -391,7 +414,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('OCR Text Layer',
+                const Text('Lapisan Teks OCR',
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 IconButton(
@@ -401,7 +424,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                         text: allText.isNotEmpty ? allText : _document!.title));
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied to clipboard')));
+                        const SnackBar(content: Text('Teks disalin ke papan klip')));
                   },
                 ),
               ],
@@ -410,7 +433,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
             Text(
               allText.isNotEmpty
                   ? allText
-                  : 'Document text layer indexed for Searchable PDF.',
+                  : 'Lapisan teks dokumen diindeks otomatis untuk Searchable PDF.',
               style: const TextStyle(
                   color: ArchTheme.textSecondary, fontSize: 13),
             ),
@@ -420,80 +443,183 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     );
   }
 
+  void _showPageActionSheet(ScanPage page, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text(
+                'Halaman ${index + 1}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.crop_outlined),
+                title: const Text('Potong & Atur Batas (Crop)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CropScreen(
+                        imagePath: page.rawImagePath,
+                        documentId: _document!.id,
+                        pageId: page.id,
+                      ),
+                    ),
+                  ).then((_) => _loadDocument());
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.draw_outlined),
+                title: const Text('Bubuhkan Tanda Tangan'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _signPage(page);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.text_snippet_outlined),
+                title: const Text('Ekstrak Teks (OCR)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _extractPageOcr(page);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: ArchTheme.danger),
+                title: const Text('Hapus Halaman Ini', style: TextStyle(color: ArchTheme.danger)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deletePage(index);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: ArchTheme.primary)),
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: theme.colorScheme.primary)),
       );
     }
 
     if (_document == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Document Not Found')),
-        body: const Center(child: Text('Document was deleted')),
+        appBar: AppBar(title: const Text('Dokumen Tidak Ditemukan')),
+        body: const Center(child: Text('Dokumen ini telah dihapus')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: GestureDetector(
           onTap: _renameDocument,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
                 child: Text(
                   _document!.title,
                   overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.edit, size: 16, color: ArchTheme.textSecondary),
+              const SizedBox(width: 4),
+              const Icon(Icons.edit, size: 14, color: ArchTheme.textSecondary),
             ],
           ),
         ),
         actions: [
+          // Toggle View (Grid 2 Kolom vs List)
           IconButton(
-            onPressed: _extractText,
-            icon: const Icon(Icons.text_fields_outlined, size: 20),
-            tooltip: 'OCR Text Layer',
+            icon: Icon(_isGridView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 22),
+            tooltip: _isGridView ? 'Mode Daftar' : 'Mode Kotak (Grid)',
+            onPressed: () => setState(() => _isGridView = !_isGridView),
           ),
-          IconButton(
-            onPressed: _exportLongImage,
-            icon: const Icon(Icons.view_agenda_outlined, size: 20),
-            tooltip: 'Stitch Long Image',
-          ),
+          // Share
           IconButton(
             onPressed: _isGeneratingPdf ? null : _shareDocument,
-            icon: const Icon(Icons.share, size: 20),
-            tooltip: 'Share Document',
+            icon: const Icon(Icons.share_outlined, size: 22),
+            tooltip: 'Bagikan',
           ),
-          IconButton(
-            onPressed: _isGeneratingPdf ? null : _exportPdf,
-            icon: _isGeneratingPdf
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: ArchTheme.primary),
-                  )
-                : const Icon(Icons.picture_as_pdf, color: ArchTheme.primary),
-            tooltip: 'Export PDF',
-          ),
+          // More Tools Menu (Bersih & Rapi)
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.more_vert, size: 22),
             onSelected: (val) {
-              if (val == 'images') {
+              if (val == 'pdf') {
+                _exportPdf();
+              } else if (val == 'long_img') {
+                _exportLongImage();
+              } else if (val == 'ocr') {
+                _extractText();
+              } else if (val == 'images') {
                 _exportAllPagesAsImages();
               }
             },
             itemBuilder: (ctx) => [
               const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Ekspor Berkas PDF'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'long_img',
+                child: Row(
+                  children: [
+                    Icon(Icons.view_agenda_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Jadikan Gambar Panjang'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'ocr',
+                child: Row(
+                  children: [
+                    Icon(Icons.text_fields_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Lapisan Teks OCR'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'images',
                 child: Row(
                   children: [
                     Icon(Icons.photo_library_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('Bagikan Gambar Tiap Halaman'),
+                    SizedBox(width: 10),
+                    Text('Bagikan Gambar Halaman'),
                   ],
                 ),
               ),
@@ -501,95 +627,231 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
           ),
         ],
       ),
-      body: ReorderableListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _document!.pages.length,
-        onReorderItem: (oldIndex, newIndex) async {
-          setState(() {
-            final page = _document!.pages.removeAt(oldIndex);
-            _document!.pages.insert(newIndex, page);
-            _document!.updatedAt = DateTime.now();
-          });
-          await DocumentStorageService.instance.saveDocument(_document!);
-        },
-        itemBuilder: (context, index) {
-          final page = _document!.pages[index];
-          return Card(
-            key: ValueKey(page.id),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.file(
-                  File(page.processedImagePath),
-                  width: 50,
-                  height: 70,
-                  fit: BoxFit.cover,
+      body: _isGridView ? _buildGridView() : _buildListView(),
+      // Bottom Action Bar persis CamScanner
+      bottomNavigationBar: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(top: BorderSide(color: theme.dividerColor, width: 0.8)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildBottomAction(
+              icon: Icons.camera_alt_outlined,
+              label: 'Tambah',
+              color: theme.colorScheme.primary,
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CameraScanScreen(documentId: _document!.id),
+                  ),
+                );
+                _loadDocument();
+              },
+            ),
+            _buildBottomAction(
+              icon: Icons.picture_as_pdf,
+              label: 'PDF',
+              color: const Color(0xFFEF4444),
+              onTap: _exportPdf,
+            ),
+            _buildBottomAction(
+              icon: Icons.share,
+              label: 'Bagikan',
+              color: const Color(0xFF3B82F6),
+              onTap: _shareDocument,
+            ),
+            _buildBottomAction(
+              icon: Icons.sort,
+              label: 'Urutan',
+              color: const Color(0xFF10B981),
+              onTap: () {
+                setState(() => _isGridView = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tahan dan geser item untuk mengubah urutan halaman'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Grid 2 Kolom Khas CamScanner (Thumbnail Besar & Bersih)
+  Widget _buildGridView() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 0.68,
+      ),
+      itemCount: _document!.pages.length,
+      itemBuilder: (context, index) {
+        final page = _document!.pages[index];
+        return GestureDetector(
+          onTap: () => _showPageActionSheet(page, index),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).dividerColor),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
                 ),
-              ),
-              title: Text(
-                'Page ${index + 1}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Filter: ${page.filter.label} • Rotation: ${page.rotationDegrees}°',
-                style: const TextStyle(color: ArchTheme.textSecondary, fontSize: 12),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.draw_outlined, size: 19),
-                    tooltip: 'Bubuhkan Tanda Tangan',
-                    onPressed: () => _signPage(page),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.text_snippet_outlined, size: 19),
-                    tooltip: 'Ekstrak Teks OCR',
-                    onPressed: () => _extractPageOcr(page),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.crop, color: ArchTheme.primary, size: 19),
-                    tooltip: 'Re-crop',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CropScreen(
-                            imagePath: page.rawImagePath,
-                            documentId: _document!.id,
-                            pageId: page.id,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(
+                          File(page.processedImagePath),
+                          fit: BoxFit.cover,
+                        ),
+                        // Badge Nomor Halaman di Pojok Atas
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: ArchTheme.danger),
-                    tooltip: 'Delete Page',
-                    onPressed: () => _deletePage(index),
+                ),
+                // Footer Informasi Halaman Rapi
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        page.filter.label,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: ArchTheme.textSecondary,
+                        ),
+                      ),
+                      const Icon(Icons.more_horiz, size: 16, color: ArchTheme.textSecondary),
+                    ],
                   ),
-                  const Icon(Icons.drag_handle, color: ArchTheme.textSecondary),
-                ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // List View dengan Drag & Drop Reorder
+  Widget _buildListView() {
+    return ReorderableListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _document!.pages.length,
+      onReorderItem: (oldIndex, newIndex) async {
+        setState(() {
+          final page = _document!.pages.removeAt(oldIndex);
+          _document!.pages.insert(newIndex, page);
+          _document!.updatedAt = DateTime.now();
+        });
+        await DocumentStorageService.instance.saveDocument(_document!);
+      },
+      itemBuilder: (context, index) {
+        final page = _document!.pages[index];
+        return Card(
+          key: ValueKey(page.id),
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.file(
+                File(page.processedImagePath),
+                width: 48,
+                height: 68,
+                fit: BoxFit.cover,
               ),
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          if (_document == null) return;
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CameraScanScreen(documentId: _document!.id),
+            title: Text(
+              'Halaman ${index + 1}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
-          );
-          _loadDocument();
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Page'),
-      ),
+            subtitle: Text(
+              '${page.filter.label} • ${page.rotationDegrees}°',
+              style: const TextStyle(color: ArchTheme.textSecondary, fontSize: 12),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Kelola Halaman',
+                  onPressed: () => _showPageActionSheet(page, index),
+                ),
+                const Icon(Icons.drag_handle, color: ArchTheme.textSecondary),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

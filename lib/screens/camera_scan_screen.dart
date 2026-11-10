@@ -63,15 +63,19 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   }
 
   Future<void> _initCameraWithPermission() async {
-    final status = await Permission.camera.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      if (mounted) {
-        setState(() {
-          _permissionDenied = true;
-          _errorMessage = 'Izin kamera belum diberikan.';
-        });
+    try {
+      final status = await Permission.camera.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        if (mounted) {
+          setState(() {
+            _permissionDenied = true;
+            _errorMessage = 'Izin kamera belum diberikan.';
+          });
+        }
+        return;
       }
-      return;
+    } catch (e) {
+      // Graceful fallback if permission_handler plugin is not registered on desktop/linux
     }
 
     try {

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:uuid/uuid.dart';
 import '../core/bridge/arch_scan_bridge.dart';
 import '../core/theme/arch_theme.dart';
@@ -175,6 +176,32 @@ class _FilterScreenState extends State<FilterScreen> {
       await srcFile.copy(finalPath);
     }
 
+    // Extract real OCR words and coordinates for Searchable PDF
+    final ocrItems = <OcrItem>[];
+    try {
+      final recognizer = TextRecognizer();
+      final recognized =
+          await recognizer.processImage(InputImage.fromFilePath(finalPath));
+      recognizer.close();
+
+      for (final block in recognized.blocks) {
+        for (final line in block.lines) {
+          final text = line.text.trim();
+          if (text.isNotEmpty) {
+            final rect = line.boundingBox;
+            ocrItems.add(
+              OcrItem(
+                text: text,
+                x: rect.left,
+                y: rect.top,
+                fontSize: rect.height,
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
     final scanPage = ScanPage(
       id: pageId,
       rawImagePath: widget.rawImagePath,
@@ -182,6 +209,7 @@ class _FilterScreenState extends State<FilterScreen> {
       corners: _currentCorners,
       filter: _selectedFilter,
       rotationDegrees: _rotation,
+      ocrItems: ocrItems,
     );
 
     ScanDocument targetDoc;

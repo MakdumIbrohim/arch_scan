@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -71,6 +72,56 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     _refresh();
+  }
+
+  Future<void> _importDocumentFiles() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+      );
+
+      if (files.isEmpty || !mounted) return;
+
+      final validPaths = files.map((f) => f.path).whereType<String>().toList();
+      if (validPaths.isEmpty) return;
+
+      // Filter only image-compatible paths for the scanner pipeline, or process direct documents
+      final imagePaths = validPaths.where((p) {
+        final ext = p.split('.').last.toLowerCase();
+        return ['jpg', 'jpeg', 'png'].contains(ext);
+      }).toList();
+
+      if (imagePaths.isNotEmpty) {
+        if (imagePaths.length > 1) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BatchProcessScreen(imagePaths: imagePaths),
+            ),
+          );
+        } else {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CropScreen(imagePath: imagePaths.first),
+            ),
+          );
+        }
+        _refresh();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${validPaths.length} file dipilih: ${validPaths.first.split('/').last}'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih berkas: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _openSignaturePad() async {
@@ -391,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.folder_open_outlined,
         label: 'Impor File',
         color: const Color(0xFFF59E0B),
-        onTap: _importImages,
+        onTap: _importDocumentFiles,
       ),
       _QuickAction(
         icon: Icons.credit_card_outlined,

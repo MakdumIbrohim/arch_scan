@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -367,7 +368,43 @@ class _CameraScanScreenState extends State<CameraScanScreen>
   }
 
   Future<void> _importDocumentFiles() async {
-    await _pickFromGallery();
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (files.isEmpty || !mounted) return;
+      final validPaths = files.map((f) => f.path).whereType<String>().toList();
+
+      final imagePaths = validPaths.where((p) {
+        final ext = p.split('.').last.toLowerCase();
+        return ['jpg', 'jpeg', 'png'].contains(ext);
+      }).toList();
+
+      if (imagePaths.isNotEmpty) {
+        if (_isBatchMode) {
+          setState(() {
+            _batchQueue.addAll(imagePaths);
+          });
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => CropScreen(
+                imagePath: imagePaths.first,
+                documentId: widget.documentId,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih dokumen: $e')),
+        );
+      }
+    }
   }
 
   void _finishBatch() {

@@ -128,113 +128,183 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     PdfPaperSize selectedPaper = ThemeService.instance.defaultPaperSize;
     PdfQuality selectedQuality = ThemeService.instance.defaultQuality;
     final watermarkCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool enablePassword = false;
+    bool obscurePassword = true;
 
     final config = await showModalBottomSheet<PdfSettings>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
+          padding: EdgeInsets.only(
+            left: 20.0,
+            right: 20.0,
+            top: 20.0,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20.0,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Pengaturan Ekspor PDF',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ukuran Kertas',
+                  style: TextStyle(
+                      color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: PdfPaperSize.values.map((p) {
+                    final isSel = selectedPaper == p;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        label: Text(p.name.toUpperCase()),
+                        selected: isSel,
+                        selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        side: BorderSide(
+                          color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
+                        ),
+                        onSelected: (_) => setModalState(() => selectedPaper = p),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Kualitas Kompresi',
+                  style: TextStyle(
+                      color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: PdfQuality.values.map((q) {
+                    final isSel = selectedQuality == q;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ChoiceChip(
+                        label: Text(q.name.toUpperCase()),
+                        selected: isSel,
+                        selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        side: BorderSide(
+                          color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
+                        ),
+                        onSelected: (_) =>
+                            setModalState(() => selectedQuality = q),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Watermark (Opsional)',
+                  style: TextStyle(
+                      color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: watermarkCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Contoh: SALINAN / CONFIDENTIAL',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 20,
+                      color: enablePassword
+                          ? Theme.of(context).colorScheme.primary
+                          : ArchTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Proteksi Kata Sandi (Enkripsi PDF)',
+                        style: TextStyle(
+                            color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Switch(
+                      value: enablePassword,
+                      onChanged: (val) => setModalState(() => enablePassword = val),
+                    ),
+                  ],
+                ),
+                if (enablePassword) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordCtrl,
+                    obscureText: obscurePassword,
+                    decoration: InputDecoration(
+                      hintText: 'Masukkan kata sandi pembuka PDF',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          size: 20,
+                        ),
+                        onPressed: () => setModalState(
+                            () => obscurePassword = !obscurePassword),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   const Text(
-                    'Pengaturan Ekspor PDF',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Penerima harus memasukkan kata sandi ini untuk membuka file PDF.',
+                    style: TextStyle(fontSize: 12, color: ArchTheme.textSecondary),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Ukuran Kertas',
-                style: TextStyle(
-                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: PdfPaperSize.values.map((p) {
-                  final isSel = selectedPaper == p;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(p.name.toUpperCase()),
-                      selected: isSel,
-                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                      side: BorderSide(
-                        color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
-                      ),
-                      onSelected: (_) => setModalState(() => selectedPaper = p),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Kualitas Kompresi',
-                style: TextStyle(
-                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: PdfQuality.values.map((q) {
-                  final isSel = selectedQuality == q;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(q.name.toUpperCase()),
-                      selected: isSel,
-                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                      side: BorderSide(
-                        color: isSel ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
-                      ),
-                      onSelected: (_) =>
-                          setModalState(() => selectedQuality = q),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Watermark (Opsional)',
-                style: TextStyle(
-                    color: ArchTheme.textSecondary, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: watermarkCtrl,
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: SALINAN / CONFIDENTIAL',
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(
-                    ctx,
-                    PdfSettings(
-                      paperSize: selectedPaper,
-                      quality: selectedQuality,
-                      watermark: watermarkCtrl.text.trim().isNotEmpty
-                          ? watermarkCtrl.text.trim()
-                          : null,
-                    ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final pw = enablePassword ? passwordCtrl.text.trim() : null;
+                      if (enablePassword && (pw == null || pw.isEmpty)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Silakan masukkan kata sandi terlebih dahulu')),
+                        );
+                        return;
+                      }
+                      Navigator.pop(
+                        ctx,
+                        PdfSettings(
+                          paperSize: selectedPaper,
+                          quality: selectedQuality,
+                          watermark: watermarkCtrl.text.trim().isNotEmpty
+                              ? watermarkCtrl.text.trim()
+                              : null,
+                          password: pw,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.download_done),
+                    label: const Text('Buat Berkas PDF'),
                   ),
-                  icon: const Icon(Icons.download_done),
-                  label: const Text('Buat Berkas PDF'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

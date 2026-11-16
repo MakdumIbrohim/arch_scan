@@ -471,3 +471,28 @@ pub fn inpaint_mask(base: &DynamicImage, mask: &DynamicImage) -> DynamicImage {
 
     DynamicImage::ImageRgba8(current_img)
 }
+
+/// Split an open-book image horizontally into left and right page images.
+/// `split_ratio` is typically 0.5 (center).
+/// A slight gutter overlap is included to ensure no margin text is clipped in the spine.
+pub fn split_book_image(
+    img: &DynamicImage,
+    split_ratio: f32,
+) -> (DynamicImage, DynamicImage) {
+    let (w, h) = img.dimensions();
+    let ratio = split_ratio.clamp(0.2, 0.8);
+    let center_x = (w as f32 * ratio).round() as u32;
+
+    // 2.5% overlap gutter for spine margin preservation
+    let gutter = (w as f32 * 0.025).round() as u32;
+
+    let left_w = (center_x + gutter).min(w);
+    let right_start_x = if center_x > gutter { center_x - gutter } else { 0 };
+    let right_w = w.saturating_sub(right_start_x);
+
+    let left_img = img.crop_imm(0, 0, left_w, h);
+    let right_img = img.crop_imm(right_start_x, 0, right_w, h);
+
+    (left_img, right_img)
+}
+

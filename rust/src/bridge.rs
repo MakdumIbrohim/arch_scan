@@ -398,3 +398,47 @@ pub extern "C" fn arch_scan_inpaint_mask(
         0
     }
 }
+
+/// Split an open book image into Left and Right page images (Book Mode)
+/// Returns 0 on success, negative error code otherwise.
+#[no_mangle]
+pub extern "C" fn arch_scan_split_book(
+    input_path: *const c_char,
+    left_output_path: *const c_char,
+    right_output_path: *const c_char,
+    split_ratio: f32,
+) -> i32 {
+    if input_path.is_null() || left_output_path.is_null() || right_output_path.is_null() {
+        return -1;
+    }
+
+    let in_str = match unsafe { CStr::from_ptr(input_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let l_str = match unsafe { CStr::from_ptr(left_output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let r_str = match unsafe { CStr::from_ptr(right_output_path) }.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+
+    let img = match image::open(in_str) {
+        Ok(img) => img,
+        Err(_) => return -2,
+    };
+
+    let (left_img, right_img) = crate::enhancement::split_book_image(&img, split_ratio);
+
+    if left_img.save(l_str).is_err() {
+        return -3;
+    }
+    if right_img.save(r_str).is_err() {
+        return -4;
+    }
+
+    0
+}
+

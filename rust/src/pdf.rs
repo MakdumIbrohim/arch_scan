@@ -1,3 +1,4 @@
+use crate::crypto::PdfSecurity;
 use pdf_writer::types::TextRenderingMode;
 use pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, Str};
 use serde::{Deserialize, Serialize};
@@ -39,6 +40,8 @@ pub struct PdfConfig {
     pub quality: PdfQuality,
     #[serde(default)]
     pub watermark: Option<String>,
+    #[serde(default)]
+    pub password: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +105,37 @@ pub fn create_searchable_pdf_with_config<P: AsRef<Path>>(
     alloc += 1;
     let font_ref = Ref::new(alloc);
     alloc += 1;
+
+    // Optional Password Protection Setup (Revision 2 PDF Standard Security)
+    let security_info = if let Some(ref pw) = config.password {
+        let trimmed = pw.trim();
+        if !trimmed.is_empty() {
+            let sec_ref = Ref::new(alloc);
+            alloc += 1;
+            let file_id: [u8; 16] = [
+                0x41, 0x72, 0x63, 0x68, 0x53, 0x63, 0x61, 0x6e,
+                0x43, 0x6f, 0x72, 0x65, 0x50, 0x64, 0x66, 0x31,
+            ];
+            let sec = PdfSecurity::new(trimmed, &file_id);
+            pdf.set_file_id((file_id.to_vec(), file_id.to_vec()));
+
+            // Register /Encrypt dictionary object
+            let mut enc_dict = pdf.indirect(sec_ref).dict();
+            enc_dict.pair(Name(b"Filter"), Name(b"Standard"));
+            enc_dict.pair(Name(b"V"), 1);
+            enc_dict.pair(Name(b"R"), 2);
+            enc_dict.pair(Name(b"O"), Str(&sec.o_val));
+            enc_dict.pair(Name(b"U"), Str(&sec.u_val));
+            enc_dict.pair(Name(b"P"), sec.p_val);
+            enc_dict.finish();
+
+            Some((sec_ref, sec))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     // Standard Type1 Helvetica font
     let font_name = Name(b"F1");
@@ -280,10 +314,21 @@ pub fn create_searchable_pdf_with_config<P: AsRef<Path>>(
             }
         }
 
-        pdf.stream(p.content_ref, &content.finish());
+        let content_bytes = content.finish();
+        let final_content = if let Some((_, ref sec)) = security_info {
+            sec.encrypt_stream(p.content_ref.get() as u32, 0, &content_bytes)
+        } else {
+            content_bytes
+        };
+        pdf.stream(p.content_ref, &final_content);
 
         // Image XObject
-        let mut image_stream = pdf.image_xobject(p.image_ref, &p.jpeg_data);
+        let final_jpeg = if let Some((_, ref sec)) = security_info {
+            sec.encrypt_stream(p.image_ref.get() as u32, 0, &p.jpeg_data)
+        } else {
+            p.jpeg_data.clone()
+        };
+        let mut image_stream = pdf.image_xobject(p.image_ref, &final_jpeg);
         image_stream.width(p.orig_w as i32);
         image_stream.height(p.orig_h as i32);
         image_stream.color_space().device_rgb();
@@ -292,10 +337,21 @@ pub fn create_searchable_pdf_with_config<P: AsRef<Path>>(
         image_stream.finish();
     }
 
+    let mut finished_bytes = pdf.finish();
+    if let Some((sec_ref, _)) = security_info {
+        if let Some(pos) = finished_bytes.windows(8).rposition(|w| w == b"trailer\n") {
+            let insert_pos = pos + 8;
+            if finished_bytes[insert_pos..].starts_with(b"<<") {
+                let inject = format!("<</Encrypt {} 0 R ", sec_ref.get());
+                finished_bytes.splice(insert_pos..insert_pos + 2, inject.as_bytes().iter().copied());
+            }
+        }
+    }
+
     let file = File::create(output_path).map_err(|e| format!("Failed to create PDF file: {}", e))?;
     let mut writer = BufWriter::new(file);
     writer
-        .write_all(&pdf.finish())
+        .write_all(&finished_bytes)
         .map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     Ok(())

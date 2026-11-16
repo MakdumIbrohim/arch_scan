@@ -43,6 +43,11 @@ typedef InpaintMaskC = Int32 Function(
 typedef InpaintMaskDart = int Function(
     Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>);
 
+typedef SplitBookC = Int32 Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, Float);
+typedef SplitBookDart = int Function(
+    Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, double);
+
 class Point2D {
   final double x;
   final double y;
@@ -79,6 +84,7 @@ class ArchScanBridge {
   late final StitchLongImageDart _stitchLongImageFn;
   late final CompositeOverlayDart _compositeOverlayFn;
   late final InpaintMaskDart _inpaintMaskFn;
+  late final SplitBookDart _splitBookFn;
   bool _initialized = false;
 
   ArchScanBridge._() {
@@ -131,6 +137,8 @@ class ArchScanBridge {
           CompositeOverlayDart>('arch_scan_composite_overlay');
       _inpaintMaskFn = _lib
           .lookupFunction<InpaintMaskC, InpaintMaskDart>('arch_scan_inpaint_mask');
+      _splitBookFn = _lib
+          .lookupFunction<SplitBookC, SplitBookDart>('arch_scan_split_book');
       _initialized = true;
     } catch (e) {
       // ignore: avoid_print
@@ -376,6 +384,27 @@ class ArchScanBridge {
       calloc.free(outPtr);
     }
   }
+
+  bool splitBook({
+    required String inputPath,
+    required String leftOutputPath,
+    required String rightOutputPath,
+    double splitRatio = 0.5,
+  }) {
+    if (!_initialized) return false;
+    final inPtr = inputPath.toNativeUtf8();
+    final lPtr = leftOutputPath.toNativeUtf8();
+    final rPtr = rightOutputPath.toNativeUtf8();
+
+    try {
+      final res = _splitBookFn(inPtr, lPtr, rPtr, splitRatio);
+      return res == 0;
+    } finally {
+      calloc.free(inPtr);
+      calloc.free(lPtr);
+      calloc.free(rPtr);
+    }
+  }
 }
 
 enum PdfPaperSize {
@@ -402,17 +431,20 @@ class PdfSettings {
   final PdfPaperSize paperSize;
   final PdfQuality quality;
   final String? watermark;
+  final String? password;
 
   const PdfSettings({
     this.paperSize = PdfPaperSize.a4,
     this.quality = PdfQuality.high,
     this.watermark,
+    this.password,
   });
 
   Map<String, dynamic> toJson() => {
         'paper_size': paperSize.code,
         'quality': quality.code,
         if (watermark != null && watermark!.isNotEmpty) 'watermark': watermark,
+        if (password != null && password!.isNotEmpty) 'password': password,
       };
 }
 

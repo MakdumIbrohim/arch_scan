@@ -2,7 +2,9 @@ import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../core/bridge/arch_scan_bridge.dart';
 import '../widgets/signature_pad.dart';
 import 'crop_screen.dart';
 import 'batch_process_screen.dart';
@@ -294,6 +296,51 @@ class _CameraScanScreenState extends State<CameraScanScreen>
 
     if (capturedPath == null || !mounted) return;
 
+    if (_activeMode == 'Buku') {
+      if (_flashMode == FlashMode.torch && _controller != null) {
+        try {
+          await _controller!.setFlashMode(FlashMode.off);
+        } catch (_) {}
+      }
+
+      final appDir = await getTemporaryDirectory();
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final leftPath = '${appDir.path}/book_left_$ts.jpg';
+      final rightPath = '${appDir.path}/book_right_$ts.jpg';
+
+      final splitOk = ArchScanBridge.instance.splitBook(
+        inputPath: capturedPath,
+        leftOutputPath: leftPath,
+        rightOutputPath: rightPath,
+        splitRatio: 0.5,
+      );
+
+      if (splitOk) {
+        if (_isBatchMode) {
+          setState(() {
+            _batchQueue.add(leftPath);
+            _batchQueue.add(rightPath);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Buku dipindai: 2 halaman (Kiri & Kanan) ditambahkan.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => BatchProcessScreen(
+                imagePaths: [leftPath, rightPath],
+                documentId: widget.documentId,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     if (_isBatchMode) {
       setState(() {
         _batchQueue.add(capturedPath!);
@@ -518,6 +565,14 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                       );
                     },
                   ),
+                  _buildFeatureIcon(
+                    icon: Icons.auto_stories,
+                    label: 'Mode Buku',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _onModeSelected('Buku');
+                    },
+                  ),
                 ],
               ),
             ],
@@ -590,6 +645,13 @@ class _CameraScanScreenState extends State<CameraScanScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Mode Hapus Cerdas: Siap membersihkan dokumen otomatis.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else if (mode == 'Buku') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mode Buku: Foto 2 halaman sekaligus, otomatis dipisah menjadi 2 halaman scan.'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -836,6 +898,90 @@ class _CameraScanScreenState extends State<CameraScanScreen>
             ),
           ),
 
+          // 2b. Book Mode Live Alignment Guide Overlay
+          if (_activeMode == 'Buku')
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 110),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC000000),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_stories, size: 16, color: Colors.tealAccent),
+                            SizedBox(width: 8),
+                            Text(
+                              'Posisikan punggung buku di garis hijau tengah',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white30, width: 1.5),
+                                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+                                ),
+                                child: const Align(
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Halaman Kiri\n(Hal. 1)',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 3,
+                              color: Colors.tealAccent,
+                            ),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white30, width: 1.5),
+                                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                                ),
+                                child: const Align(
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Halaman Kanan\n(Hal. 2)',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 100),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // 3. Floating Pill Selector: [ Satu Halaman | Beberapa Halaman ]
           Positioned(
             bottom: 160,
@@ -907,6 +1053,13 @@ class _CameraScanScreenState extends State<CameraScanScreen>
                     hasBadge: false,
                     isSelected: _activeMode == 'Scan',
                     onTap: () => _onModeSelected('Scan'),
+                  ),
+                  const SizedBox(width: 20),
+                  _buildCarouselItem(
+                    label: 'Buku',
+                    hasBadge: false,
+                    isSelected: _activeMode == 'Buku',
+                    onTap: () => _onModeSelected('Buku'),
                   ),
                   const SizedBox(width: 20),
                   _buildCarouselItem(
